@@ -42,7 +42,7 @@ Every entity supports create, search, update and delete. The SPA exposes the rel
 |---|---|
 | CRUD | Genres, authors and books — full create / read / update / delete |
 | Search | Free-text search, pagination and sorting on every list endpoint |
-| Relationships | Books resolve author and genre; deletes that would orphan books are rejected |
+| Relationships | Books resolve author and genre, and every one is navigable — a book links to both, and each lists the books that depend on it; deletes that would orphan books are rejected |
 | Errors | RFC 9457 `application/problem+json` on every failure path, consistent across the API |
 | Auth | Public reads, JWT-protected writes (see [Security](#9-security)) |
 | Observability | Structured logs with correlation id, `/health` endpoint |
@@ -261,7 +261,7 @@ Playwright lives outside `frontend/`, in a top-level `e2e/`: it drives a real br
 
 **Forms via React Hook Form + Zod.** The Zod schema mirrors the API validation rules, so obvious mistakes are caught before a request is sent — while the server still validates independently, since client-side validation is a usability feature, not a security boundary. Server-side field errors from a `400` are mapped back onto the matching form fields.
 
-**Screens:** list pages with search, sortable columns and pagination; a create/edit form per resource; a delete confirmation that surfaces the `409` reason when a genre or author is still in use; and a book detail page linking through to its author and genre.
+**Screens:** list pages with search, sortable columns and pagination; a create/edit form per resource; a delete confirmation that surfaces the `409` reason when a genre or author is still in use; and a detail page per resource — a book links through to its author and genre, and each of those lists the books that depend on it, so the relationship can be walked in both directions.
 
 Styling is Tailwind with a small set of local components. The brief does not require visual sophistication, so the effort went into clear states — loading, empty, error, and disabled-while-saving — rather than into a design system.
 

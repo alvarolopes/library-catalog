@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ApiError } from '@/shared/api/client'
 import { authorsApi } from '@/shared/api/resources'
 import type { Author } from '@/shared/api/types'
@@ -76,7 +77,11 @@ export function AuthorsListPage() {
         <Table headers={isSignedIn ? ['Name', 'Born', 'Nationality', 'Actions'] : ['Name', 'Born', 'Nationality']}>
           {result?.items.map((author) => (
             <tr key={author.id} className="hover:bg-slate-50">
-              <td className="px-4 py-3 font-medium">{author.name}</td>
+              <td className="px-4 py-3 font-medium">
+                <Link to={`/authors/${author.id}`} className="text-slate-900 hover:underline">
+                  {author.name}
+                </Link>
+              </td>
               <td className="px-4 py-3 text-slate-600">{author.birthDate ?? '-'}</td>
               <td className="px-4 py-3 text-slate-600">{author.nationality ?? '-'}</td>
               {isSignedIn && (
