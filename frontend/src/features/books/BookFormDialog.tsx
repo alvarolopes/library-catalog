@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -12,8 +12,17 @@ import { Field } from '@/shared/components/Field'
 
 const REFERENCE_LIST_PARAMS = { page: 1, pageSize: 100, sortBy: 'name' } as const
 
+/**
+ * Mirrors the server's `Isbn.Normalize`, which keeps letters and digits and drops
+ * everything else. Stripping only spaces and hyphens would reject values the API
+ * happily accepts — `978.0.306.40615.7` stores as `9780306406157`.
+ */
+function normalizeIsbn(value: string): string {
+  return value.replace(/[^a-zA-Z0-9]/g, '')
+}
+
 function isIsbnShape(value: string): boolean {
-  const normalized = value.replace(/[\s-]/g, '')
+  const normalized = normalizeIsbn(value)
 
   return (
     normalized === '' ||
@@ -36,14 +45,47 @@ function isPublicationYear(value: string): boolean {
   return /^\d{4}$/.test(value) && year >= 1450 && year <= getLatestPublicationYear()
 }
 
-function isMissingReference(error: unknown): boolean {
+interface MissingResource {
+  /** The book itself is gone, as opposed to something it points at. */
+  isTheBook: boolean
+  message: string
+}
+
+/**
+ * The API reports every absent record as `resource-not-found` and only the detail
+ * text says which one, so telling them apart means reading that text. That is a
+ * coupling to the server's wording — but the alternative is showing the user the
+ * raw detail, which quotes a GUID. The fallback below keeps that from ever
+ * happening if the wording changes.
+ *
+ * A machine-readable `resource` on the problem response would remove the parsing
+ * entirely; that belongs with the error-envelope work in #14.
+ */
+function describeMissingResource(error: unknown): MissingResource | null {
   if (!(error instanceof ApiError) || error.problem?.type !== 'resource-not-found') {
-    return false
+    return null
   }
 
   const detail = error.problem.detail ?? ''
 
-  return detail.startsWith("author '") || detail.startsWith("genre '")
+  if (detail.startsWith("book '")) {
+    return {
+      isTheBook: true,
+      message: 'This book no longer exists — someone else may have deleted it.',
+    }
+  }
+
+  if (detail.startsWith("author '") || detail.startsWith("genre '")) {
+    return {
+      isTheBook: false,
+      message: 'The selected author or genre no longer exists. Please choose another and try again.',
+    }
+  }
+
+  return {
+    isTheBook: false,
+    message: 'Something this book refers to no longer exists. Please review the form and try again.',
+  }
 }
 
 const bookSchema = z.object({
@@ -78,6 +120,7 @@ interface BookFormDialogProps {
 export function BookFormDialog({ book, onClose, onSubmit }: BookFormDialogProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const isEditing = book !== undefined
+  const queryClient = useQueryClient()
   const latestPublicationYear = getLatestPublicationYear()
   const authorsQuery = useQuery({
     queryKey: ['authors', 'book-form-options', REFERENCE_LIST_PARAMS],
@@ -132,12 +175,19 @@ export function BookFormDialog({ book, onClose, onSubmit }: BookFormDialogProps)
       })
       onClose()
     } catch (error) {
-      if (isMissingReference(error)) {
-        void authorsQuery.refetch()
-        void genresQuery.refetch()
-        setSubmitError(
-          'The selected author or genre no longer exists. Please choose another and try again.',
-        )
+      const missing = describeMissingResource(error)
+
+      if (missing) {
+        if (missing.isTheBook) {
+          // The row the user opened is gone, so the list behind this dialog is
+          // showing something that no longer exists.
+          void queryClient.invalidateQueries({ queryKey: ['books'] })
+        } else {
+          void authorsQuery.refetch()
+          void genresQuery.refetch()
+        }
+
+        setSubmitError(missing.message)
         return
       }
 
