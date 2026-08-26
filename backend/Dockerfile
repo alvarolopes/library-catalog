@@ -16,6 +16,12 @@ RUN dotnet publish src/LibraryCatalog.Api/LibraryCatalog.Api.csproj -c Release -
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
+# The runtime image ships no HTTP client, and Docker healthchecks need a command
+# to run. curl is the smallest thing that makes /health actually observable.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app ./
 
 # The base image ships a non-root 'app' user; a container that does not need
