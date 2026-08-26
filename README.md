@@ -421,8 +421,14 @@ cd frontend && npm test
 ```
 
 ```bash
-docker compose up -d && npx playwright test
+docker compose up -d --build
+cd e2e
+npm ci
+npx playwright install chromium
+npm test
 ```
+
+The end-to-end test drives the production SPA bundle through the browser, so the Compose stack must already be healthy before Playwright starts it.
 
 **What is not covered:** load or performance tests, and mutation testing. At three days, the marginal bug caught did not justify the setup time — noted here rather than left for the reader to discover.
 
