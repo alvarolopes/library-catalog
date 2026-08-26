@@ -34,5 +34,16 @@ export function useListQuery<T>(
     placeholderData: keepPreviousData,
   })
 
+  // Deleting the last row of the last page shrinks the result set under the user.
+  // Without this they are left on a page that no longer exists, reading "no records"
+  // while the list is in fact full.
+  const totalPages = query.data?.totalPages
+
+  useEffect(() => {
+    if (totalPages !== undefined && totalPages > 0 && page > totalPages) {
+      setPage(totalPages)
+    }
+  }, [totalPages, page])
+
   return { search, setSearch, page, setPage, query }
 }

@@ -19,6 +19,9 @@ const genreSchema = z.object({
 
 export type GenreFormValues = z.infer<typeof genreSchema>
 
+/** Fields this form renders, so a server error on anything else is not swallowed. */
+const GENRE_FORM_FIELDS = ['name', 'description'] as const
+
 interface GenreFormDialogProps {
   genre?: Genre
   onClose: () => void
@@ -52,7 +55,7 @@ export function GenreFormDialog({ genre, onClose, onSubmit }: GenreFormDialogPro
       })
       onClose()
     } catch (error) {
-      if (mapApiFieldErrors(error, setError)) {
+      if (mapApiFieldErrors(error, setError, GENRE_FORM_FIELDS)) {
         return
       }
 
@@ -70,6 +73,7 @@ export function GenreFormDialog({ genre, onClose, onSubmit }: GenreFormDialogPro
       description="Genres organize books into browseable categories."
       labelledBy="genre-form-title"
       onClose={onClose}
+      isBusy={isSubmitting}
       maxWidthClassName="max-w-md"
     >
       <form onSubmit={handleSubmit(submit)} noValidate className="space-y-4">

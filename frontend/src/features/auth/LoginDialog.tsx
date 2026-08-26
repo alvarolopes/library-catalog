@@ -52,6 +52,7 @@ export function LoginDialog({ onClose }: { onClose: () => void }) {
       description="Browsing the catalog is public. Signing in is only needed to change it."
       labelledBy="login-title"
       onClose={onClose}
+      isBusy={isSubmitting}
     >
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <Field label="Email" error={errors.email?.message}>
