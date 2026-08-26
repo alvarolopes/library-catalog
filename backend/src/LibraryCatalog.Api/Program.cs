@@ -10,6 +10,7 @@ using LibraryCatalog.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -32,7 +33,20 @@ builder.Services.AddApplication();
 
 builder.Services.AddControllers(options => options.Filters.Add<ValidationFilter>());
 
-builder.Services.AddOpenApi();
+// Without this the document is titled after the assembly ("LibraryCatalog.Api | v1"),
+// which is what anyone opening the spec or the Scalar UI sees first.
+builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
+{
+    document.Info = new OpenApiInfo
+    {
+        Title = "Library Catalog API",
+        Version = "v1",
+        Description = "Search, register and maintain genres, authors and books. "
+            + "Reads are public; writes require a bearer token with the staff role."
+    };
+
+    return Task.CompletedTask;
+}));
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
