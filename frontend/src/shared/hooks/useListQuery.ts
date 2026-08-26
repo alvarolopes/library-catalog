@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import type { ListParams, PagedResult } from '@/shared/api/types'
 
@@ -15,8 +15,7 @@ export function useListQuery<T>(
 ) {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [requestedPage, setPage] = useState(1)
-  const queryClient = useQueryClient()
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -27,24 +26,26 @@ export function useListQuery<T>(
     return () => clearTimeout(timer)
   }, [search])
 
-  // The API echoes the requested page even when a deletion made it out of range.
-  // Once that response is cached, request its last valid page during render instead
-  // of correcting state in an effect and showing an empty list for a frame.
-  const requestedResult = queryClient.getQueryData<PagedResult<T>>([
-    resource,
-    { search: debouncedSearch, page: requestedPage },
-  ])
-  const page = requestedResult
-    ? Math.min(requestedPage, Math.max(requestedResult.totalPages, 1))
-    : requestedPage
-
   const query = useQuery({
     queryKey: [resource, { search: debouncedSearch, page }],
     queryFn: () => fetcher({ search: debouncedSearch || undefined, page }),
-    // Keep the prior page during regular navigation, but never use an out-of-range
-    // response as placeholder data while fetching its corrected page.
-    placeholderData: page === requestedPage ? keepPreviousData : undefined,
+    // Keeps the current page visible while the next one loads, instead of
+    // flashing the loading state on every page change.
+    placeholderData: keepPreviousData,
   })
+
+  // A deletion can shrink the server-side result set under the current page. This
+  // must follow the active response rather than an unsubscribed cache entry: the
+  // latter may be stale and prevent the corrected page from ever being requested.
+  const totalPages = query.data?.totalPages
+
+  useEffect(() => {
+    if (totalPages !== undefined && page > Math.max(totalPages, 1)) {
+      // This synchronizes an asynchronous server-provided bound, not derived UI state.
+      // oxlint-disable-next-line react/set-state-in-effect
+      setPage(Math.max(totalPages, 1))
+    }
+  }, [page, totalPages])
 
   return { search, setSearch, page, setPage, query }
 }
