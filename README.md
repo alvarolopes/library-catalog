@@ -4,7 +4,7 @@ A small catalog system to search, register and maintain **genres**, **authors** 
 
 > **Build status:** documentation-first. This README describes the solution as designed; the code is being implemented against it. This note is removed once the repository fully matches the document.
 
-**Stack:** .NET 10 (ASP.NET Core Web API) · React 19 + TypeScript + Vite · PostgreSQL 17 · EF Core 10 · Docker Compose · Playwright
+**Stack:** .NET 10 (ASP.NET Core Web API) · React 19 + TypeScript + Vite · Tailwind CSS · PostgreSQL 17 · EF Core 10 · Docker Compose · Playwright
 
 ---
 
@@ -424,6 +424,7 @@ The decisions worth defending, and what each one cost.
 | PostgreSQL | SQL Server | Free, tiny image, fast startup, mature EF Core provider — which is what makes containerized integration tests and a one-command run realistic. | Loses alignment with the typical .NET shop's existing platform and tooling. |
 | Delete blocked when dependents exist (`409`) | Cascade delete; soft delete | Cascade destroys data on a single click. Soft delete leaks into every query and index for value this scope does not need. | The user must clear or reassign books before deleting — more clicks, but no surprises. |
 | React + Vite | Angular | Faster to a working, tested SPA within three days, which left the time where the evaluation weight is — the backend and its documentation. | Less prescriptive structure; conventions had to be chosen and stated rather than inherited. |
+| Tailwind CSS | CSS Modules; styled-components | Utility classes stay in the `.tsx` file next to the markup they style — no context switch to a separate stylesheet, and no runtime cost or SSR complexity like a CSS-in-JS library adds. The brief does not call for a design system, so a utility set is enough. | Markup reads noisier than a named class, and there is no forcing function toward a shared design language beyond the small set of local components. |
 | Server-side pagination from the start | Return full lists, paginate in the client | A list endpoint that returns an entire table is a defect waiting for production data, and retrofitting paging touches the API contract, the client and the tests at once. | Slightly more work per endpoint up front. |
 | Public reads, authenticated writes | No auth at all; or lock down everything | Matches the real access pattern of a catalog and lets a reviewer explore the API immediately, while still exercising authorization end to end. | Not a complete identity solution — see [Security](#9-security). |
 | Migrations applied on startup | Manual migration step; init SQL scripts | Makes `docker compose up` genuinely one command for a reviewer. | Unacceptable in production, where migrations belong in a deployment step with a rollback plan. Called out below. |
