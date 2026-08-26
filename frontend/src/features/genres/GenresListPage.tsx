@@ -6,7 +6,7 @@ import type { Genre } from '@/shared/api/types'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
 import { ListShell, Pagination, Table } from '@/shared/components/ListShell'
 import { useListQuery } from '@/shared/hooks/useListQuery'
-import { useSession } from '../auth/session'
+import { useSession } from '../auth/session-context'
 import { GenreFormDialog } from './GenreFormDialog'
 
 type GenreFormMode = { type: 'create' } | { type: 'edit'; genre: Genre }

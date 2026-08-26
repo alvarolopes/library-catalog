@@ -1,17 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { setAuthToken } from '@/shared/api/client'
 import { authApi } from '@/shared/api/resources'
 import type { Session } from '@/shared/api/types'
-
-interface SessionContextValue {
-  session: Session | null
-  isSignedIn: boolean
-  signIn: (email: string, password: string) => Promise<void>
-  signOut: () => void
-}
-
-const SessionContext = createContext<SessionContextValue | null>(null)
+import { SessionContext } from './session-context'
 
 const STORAGE_KEY = 'library-catalog.session'
 
@@ -91,8 +83,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const msUntilExpiry = new Date(session.expiresAt).getTime() - Date.now()
 
     if (msUntilExpiry <= 0) {
-      signOut()
-      return
+      const timer = setTimeout(signOut, 0)
+
+      return () => clearTimeout(timer)
     }
 
     const timer = setTimeout(signOut, msUntilExpiry)
@@ -100,20 +93,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer)
   }, [session, signOut])
 
-  const value = useMemo<SessionContextValue>(
+  const value = useMemo(
     () => ({ session, isSignedIn: session !== null, signIn, signOut }),
     [session, signIn, signOut],
   )
 
   return <SessionContext value={value}>{children}</SessionContext>
-}
-
-export function useSession(): SessionContextValue {
-  const context = useContext(SessionContext)
-
-  if (context === null) {
-    throw new Error('useSession must be used within a SessionProvider.')
-  }
-
-  return context
 }

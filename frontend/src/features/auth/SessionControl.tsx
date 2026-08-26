@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { LoginDialog } from './LoginDialog'
-import { useSession } from './session'
+import { useSession } from './session-context'
 
 /** The header's sign in / sign out control, plus the login dialog it opens. */
 export function SessionControl() {

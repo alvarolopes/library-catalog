@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { ApiError } from '@/shared/api/client'
 import { Dialog } from '@/shared/components/Dialog'
 import { Field } from '@/shared/components/Field'
-import { useSession } from './session'
+import { useSession } from './session-context'
 
 // Mirrors the API's own rules so an obviously empty form never costs a round trip.
 // The server still validates independently — this is usability, not a boundary.
@@ -83,8 +83,9 @@ export function LoginDialog({ onClose }: { onClose: () => void }) {
         <div className="flex justify-end gap-2 pt-1">
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={onClose}
-            className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Cancel
           </button>

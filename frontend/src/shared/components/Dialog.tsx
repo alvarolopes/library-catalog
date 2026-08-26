@@ -37,19 +37,11 @@ export function Dialog({
   const dialogRef = useRef<HTMLDivElement>(null)
   const pressStartedOnBackdrop = useRef(false)
 
-  // Read through refs so the key handler does not need to be rebuilt whenever the
-  // parent re-renders with a fresh onClose closure.
-  const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
-
-  const isBusyRef = useRef(isBusy)
-  isBusyRef.current = isBusy
-
   const requestClose = useCallback(() => {
-    if (!isBusyRef.current) {
-      onCloseRef.current()
+    if (!isBusy) {
+      onClose()
     }
-  }, [])
+  }, [isBusy, onClose])
 
   // Move focus into the dialog on open, and hand it back on close.
   useEffect(() => {
@@ -63,7 +55,8 @@ export function Dialog({
     if (dialog && !dialog.contains(document.activeElement)) {
       const firstFocusable = dialog.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
 
-      ;(firstFocusable ?? dialog).focus()
+      const initialFocus = firstFocusable ?? dialog
+      initialFocus.focus()
     }
 
     return () => previouslyFocused?.focus?.()
@@ -117,13 +110,21 @@ export function Dialog({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
       role="presentation"
-      onMouseDown={(event) => {
+      onPointerDown={(event) => {
         pressStartedOnBackdrop.current = event.target === event.currentTarget
       }}
+      onPointerUp={(event) => {
+        // A click can report the overlay as the common ancestor of a press on the
+        // backdrop and a release inside the dialog. Keep the release target too.
+        if (event.target !== event.currentTarget) {
+          pressStartedOnBackdrop.current = false
+        }
+      }}
+      onPointerCancel={() => {
+        pressStartedOnBackdrop.current = false
+      }}
       onClick={(event) => {
-        // Dismiss only when the press *and* the release happened on the backdrop.
-        // A click reports the common ancestor of the two, so drag-selecting text
-        // out of the dialog would otherwise close it and discard the form.
+        // Dismiss only when the press and release both happened on the backdrop.
         if (event.target === event.currentTarget && pressStartedOnBackdrop.current) {
           requestClose()
         }
