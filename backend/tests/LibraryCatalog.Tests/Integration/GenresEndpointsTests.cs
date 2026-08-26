@@ -36,6 +36,41 @@ public sealed class GenresEndpointsTests(IntegrationFixture fixture) : ApiTestBa
     }
 
     [Fact]
+    public async Task A_genre_can_be_saved_without_renaming_it()
+    {
+        // The update guard excludes the record's own id. Without that, saving an
+        // unchanged name would conflict with itself — a spurious 409 on every edit.
+        using var staff = await CreateStaffClientAsync();
+        var name = UniqueValue("Genre");
+        var genreId = await CreateGenreAsync(staff, name);
+
+        using var response = await staff.PutAsJsonAsync($"/api/v1/genres/{genreId}", new
+        {
+            name,
+            description = "Description changed, name deliberately left alone."
+        });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task Renaming_a_genre_onto_a_name_already_in_use_conflicts()
+    {
+        using var staff = await CreateStaffClientAsync();
+        var takenName = UniqueValue("Genre");
+        await CreateGenreAsync(staff, takenName);
+        var genreId = await CreateGenreAsync(staff);
+
+        using var response = await staff.PutAsJsonAsync($"/api/v1/genres/{genreId}", new
+        {
+            name = takenName,
+            description = "Attempting to take a name already in use."
+        });
+
+        await AssertProblemAsync(response, HttpStatusCode.Conflict, "duplicate-resource");
+    }
+
+    [Fact]
     public async Task A_genre_referenced_by_books_cannot_be_deleted()
     {
         var genreId = await GetSeedIdAsync("genres", "Fantasy");

@@ -66,12 +66,16 @@ public sealed class AuthEndpointsTests(IntegrationFixture fixture) : ApiTestBase
     {
         using var reader = await CreateReaderClientAsync();
 
+        // Asserted through the problem envelope rather than the status code alone.
+        // Authentication and authorization short-circuit the pipeline before any
+        // exception handler, and used to answer with an empty body — a status-only
+        // assertion would not have noticed, and would not notice a regression.
         foreach (var request in CreateWriteRequests())
         {
             using (request)
             using (var response = await Client.SendAsync(request))
             {
-                response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+                await AssertProblemAsync(response, HttpStatusCode.Unauthorized, "unauthorized");
             }
         }
 
@@ -80,7 +84,7 @@ public sealed class AuthEndpointsTests(IntegrationFixture fixture) : ApiTestBase
             using (request)
             using (var response = await reader.SendAsync(request))
             {
-                response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+                await AssertProblemAsync(response, HttpStatusCode.Forbidden, "forbidden");
             }
         }
 
