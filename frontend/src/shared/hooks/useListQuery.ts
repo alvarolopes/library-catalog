@@ -34,18 +34,25 @@ export function useListQuery<T>(
     placeholderData: keepPreviousData,
   })
 
-  // A deletion can shrink the server-side result set under the current page. This
-  // must follow the active response rather than an unsubscribed cache entry: the
-  // latter may be stale and prevent the corrected page from ever being requested.
+  // A deletion can shrink the server-side result set under the current page, leaving
+  // the user on a page that no longer exists.
+  //
+  // Only settled data may drive this. A cache entry for a page can be left holding a
+  // smaller totalPages from before the list grew again — invalidateQueries refetches
+  // active queries only, so an unobserved page keeps its stale value. React Query
+  // serves that entry the instant the page is requested and refetches behind it, so
+  // clamping on it would bounce straight back and un-observe the page before the
+  // refetch could correct it, stranding the user one page short for good.
   const totalPages = query.data?.totalPages
+  const hasSettledData = !query.isFetching && !query.isPlaceholderData
 
   useEffect(() => {
-    if (totalPages !== undefined && page > Math.max(totalPages, 1)) {
+    if (hasSettledData && totalPages !== undefined && page > Math.max(totalPages, 1)) {
       // This synchronizes an asynchronous server-provided bound, not derived UI state.
       // oxlint-disable-next-line react/set-state-in-effect
       setPage(Math.max(totalPages, 1))
     }
-  }, [page, totalPages])
+  }, [page, totalPages, hasSettledData])
 
   return { search, setSearch, page, setPage, query }
 }
