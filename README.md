@@ -461,7 +461,6 @@ The decisions worth defending, and what each one cost.
 - **No caching layer, and no `ETag` / `If-None-Match`.** Every read hits the database. Fine at this size; the first thing to revisit under load.
 - **Lists cannot be sorted from the UI.** The API accepts `sortBy` and `sortDir` and validates them against a per-resource allowlist, but no screen sends them, so every list shows the server's default order. Tracked as [#6](https://github.com/alvarolopes/library-catalog/issues/6).
 - **Sorting is limited to an allowlist of columns.** Deliberate — it prevents arbitrary expressions reaching the query — but it also means books cannot be ordered by author or genre name, which would need the repository to order across the join.
-- **No architecture decision records.** `docs/adr/` does not exist. The reasoning lives in [Trade-offs](#11-trade-offs) and in the pull requests, which is enough at this size but does not survive a rewrite of this document. Tracked as [#10](https://github.com/alvarolopes/library-catalog/issues/10).
 - **Book reference pickers cap at 100 authors and genres.** They load the first 100 alphabetically (plus the current value while editing); a searchable, paginated combobox is deferred.
 - **No soft delete and no audit history.** Once a record is deleted, it is gone, and there is no record of who changed what.
 - **Single-language UI, no i18n and no accessibility audit.** Semantic HTML and labelled controls are used, but no assistive-technology testing was done.
@@ -475,15 +474,14 @@ The decisions worth defending, and what each one cost.
 Every item below is an open issue on this repository, so the reasoning and the intended approach are written down rather than implied. Roughly in the order I would actually pick them up:
 
 1. **[Sortable columns](https://github.com/alvarolopes/library-catalog/issues/6)** — the server half already exists and is validated; the SPA simply never sends `sortBy`. The smallest gap between what the API offers and what the UI uses, so it goes first.
-2. **[Architecture decision records](https://github.com/alvarolopes/library-catalog/issues/10)** — lifting the decisions argued in *Trade-offs* into dated, standalone records, including the one that was reversed mid-build: the SPA's token moved from memory to `sessionStorage` once it became clear that in-memory storage does not stop the attack it claims to.
-3. **CI on every push** — build, test, and a container image build. It is the cheapest way to stop the list above from growing.
-4. **Move migrations out of startup** into a deployment job, and secrets into a secret manager.
-5. **Harden auth** — move the token into an httpOnly cookie with a refresh-token flow, add revocation, login rate limiting, and real user management rather than a seeded account.
-6. **OpenTelemetry traces and metrics** alongside the existing structured logs, so a slow request can be attributed to a specific query instead of inferred.
-7. **Optimistic concurrency** on updates via a row version, returning `412` instead of letting the last writer win silently — the current behavior is fine for one librarian and wrong for five.
-8. **Richer domain** — multiple authors per book, sub-genres, copies and loans. Each is a real cataloging need, and the first would turn the book–author relationship into many-to-many, which is exactly the kind of change the current layering is meant to absorb cheaply.
-9. **Bulk import** from CSV or ONIX, with validation reporting per row.
-10. **More E2E coverage** — a few more Playwright scenarios (validation errors, the delete-blocked flow) beyond the one golden path — plus accessibility testing on the SPA.
+2. **CI on every push** — build, test, and a container image build. It is the cheapest way to stop the list above from growing.
+3. **Move migrations out of startup** into a deployment job, and secrets into a secret manager.
+4. **Harden auth** — move the token into an httpOnly cookie with a refresh-token flow, add revocation, login rate limiting, and real user management rather than a seeded account.
+5. **OpenTelemetry traces and metrics** alongside the existing structured logs, so a slow request can be attributed to a specific query instead of inferred.
+6. **Optimistic concurrency** on updates via a row version, returning `412` instead of letting the last writer win silently — the current behavior is fine for one librarian and wrong for five.
+7. **Richer domain** — multiple authors per book, sub-genres, copies and loans. Each is a real cataloging need, and the first would turn the book–author relationship into many-to-many, which is exactly the kind of change the current layering is meant to absorb cheaply.
+8. **Bulk import** from CSV or ONIX, with validation reporting per row.
+9. **More E2E coverage** — a few more Playwright scenarios (validation errors, the delete-blocked flow) beyond the one golden path — plus accessibility testing on the SPA.
 
 ---
 
@@ -493,10 +491,12 @@ Every item below is an open issue on this repository, so the reasoning and the i
 library-catalog/
 ├─ README.md
 ├─ docker-compose.yml
-├─ docs/              the original brief
+├─ docs/
+│  ├─ adr/            architecture decision records
+│  └─ technical-challenge.pdf
 ├─ backend/           .NET solution — src/ and tests/
 ├─ frontend/          React SPA
 └─ e2e/               Playwright — golden-path test against the full stack
 ```
 
-The decisions worth defending are argued in [Trade-offs](#11-trade-offs) above, and the reasoning behind each one is also on the pull request that introduced it. Lifting them into standalone ADRs is [deferred](#13-what-i-would-do-with-more-time) — a directory of records that restate this document would be worse than a link to it.
+Decisions with lasting consequences are recorded as [ADRs](docs/adr/). [Trade-offs](#11-trade-offs) above summarises them; each record adds what the summary cannot carry — the date, the alternatives rejected, and what new information would reverse the decision. One of them, [0006](docs/adr/0006-token-in-session-storage.md), records a decision that was reversed mid-build.
