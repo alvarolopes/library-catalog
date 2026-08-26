@@ -46,7 +46,7 @@ Every entity supports create, search, update and delete. The SPA exposes the rel
 | Errors | RFC 9457 `application/problem+json` on every failure path, consistent across the API |
 | Auth | Public reads, JWT-protected writes (see [Security](#9-security)) |
 | Observability | Structured logs with correlation id, `/health` endpoint |
-| Tests | Unit tests for domain and use cases, integration tests against a real PostgreSQL |
+| Tests | Unit tests for validators and pure logic, integration tests for service orchestration against a real PostgreSQL |
 | Run | `docker compose up` — database, API and SPA |
 
 ---
@@ -87,35 +87,30 @@ curl -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: applicati
 
 ## 3. Architecture
 
-The backend follows a **lean Clean Architecture**: four projects, dependencies pointing inward, and no framework types leaking into the domain.
+The backend is a **pragmatic three-layer split** — `Api`, `Application`, `Infrastructure` — each with one reason to change: HTTP concerns, business rules, persistence. No Domain project, no repository interfaces, no CQRS.
 
 ```mermaid
 flowchart LR
-    SPA["React SPA"] -->|"HTTP / JSON"| API
-
-    subgraph backend [" "]
-        direction LR
-        API["LibraryCatalog.Api<br/><i>endpoints, DI, middleware</i>"] --> APP
-        INFRA["LibraryCatalog.Infrastructure<br/><i>EF Core, repositories</i>"] --> APP
-        APP["LibraryCatalog.Application<br/><i>use cases, DTOs, contracts</i>"] --> DOM
-        DOM["LibraryCatalog.Domain<br/><i>entities, invariants</i>"]
-    end
+    SPA["React SPA"] -->|"HTTP / JSON"| API["LibraryCatalog.Api<br/><i>controllers, DTOs, middleware</i>"]
+    API --> APP["LibraryCatalog.Application<br/><i>services, validation, orchestration</i>"]
+    APP --> INFRA["LibraryCatalog.Infrastructure<br/><i>entities, DbContext, repositories</i>"]
+    INFRA --> DB[("PostgreSQL")]
 
     API -.->|"composition root only"| INFRA
-    INFRA --> DB[("PostgreSQL")]
 ```
 
-**The dependency rule:** `Domain` references nothing. `Application` references only `Domain`. `Infrastructure` implements `Application`'s interfaces, so the arrow points inward even though data flows outward at runtime. `Api` references `Infrastructure` in exactly one place — the composition root — to wire the DI container.
+`Api` calls `Application`, which calls `Infrastructure` directly — a straight top-down dependency, not an inverted one. `Api` also references `Infrastructure` in exactly one place, `Program.cs`, to wire the `DbContext` and repositories into the DI container.
 
 ### Why this, and what was deliberately left out
 
-The domain here is genuinely CRUD, so the risk was not under-engineering — it was ceremony that looks like architecture without paying for itself. Concretely:
+The domain here is genuinely three CRUD entities, so the risk was not under-engineering — it was ceremony that looks like architecture without paying for itself. Concretely:
 
-- **No MediatR / CQRS.** Use cases are plain services (`BookService`, `GenreService`). A mediator would add a dispatch indirection and a package dependency to solve a problem — cross-cutting pipeline behaviors — that this API solves with ASP.NET Core middleware and filters. If the domain grew to the point where commands and queries needed different models, that is when CQRS earns its place.
-- **No separate read model.** Queries project directly to DTOs with EF Core `Select`, which produces one SQL statement per request and no over-fetching. Splitting reads and writes across two stores is a scaling answer to a problem this system does not have.
-- **Layers, but only four.** Adding a fifth "Services" or "Common" project is a common reflex; it fragments the code without clarifying ownership.
+- **No separate Domain project.** A fourth project whose only job is to hold plain entity classes free of EF Core attributes buys framework-independence for an ORM this solution is already committed to. The entities live in `Infrastructure`, next to the `DbContext` that maps them.
+- **No repository interfaces.** `GenreRepository`, `AuthorRepository` and `BookRepository` are concrete classes in `Infrastructure`; `Application` calls them directly. An `IGenreRepository` would exist to support a second implementation that will never ship — PostgreSQL via EF Core is a one-way decision here, not a swappable dependency, so the interface would be indirection with no destination.
+- **No MediatR / CQRS.** Use cases are plain services (`GenreService`, `AuthorService`, `BookService`). A mediator would add a dispatch indirection to solve cross-cutting concerns — validation, logging — that ASP.NET Core middleware and filters already solve natively. If the domain grew commands and queries with genuinely different models, that is when CQRS would earn its place.
+- **No separate read model.** Queries project straight to DTOs with EF Core, one SQL statement per request, no over-fetching. Splitting reads and writes across two stores answers a scaling problem this system does not have.
 
-The point of the layering that *did* stay is that the business rules in `Domain` and the use cases in `Application` are testable without a database, an HTTP context, or a running container. That is the property being bought — not the folder count.
+The trade-off this buys: `Application` knows it is calling EF Core-backed repositories, so it is not framework-agnostic. In exchange, there is one less project, no interface that exists only to be implemented once, and the layering that remains still does its actual job — `Api`, `Application` and `Infrastructure` can each be reasoned about, and changed, independently. See [Testing strategy](#10-testing-strategy) for how this shapes where tests live.
 
 ---
 
@@ -125,33 +120,32 @@ The point of the layering that *did* stay is that the business rules in `Domain`
 backend/
 ├─ LibraryCatalog.sln
 ├─ src/
-│  ├─ LibraryCatalog.Domain/
-│  │  ├─ Entities/            Genre, Author, Book
-│  │  ├─ Exceptions/          DomainException and specializations
-│  │  └─ Abstractions/        Entity base type, domain primitives
+│  ├─ LibraryCatalog.Api/
+│  │  ├─ Controllers/         GenresController, AuthorsController, BooksController, AuthController
+│  │  ├─ Dtos/                request/response models per resource
+│  │  ├─ Middleware/          correlation id, global exception handling
+│  │  └─ Program.cs
 │  ├─ LibraryCatalog.Application/
-│  │  ├─ Genres/              service, DTOs, validators
+│  │  ├─ Genres/              GenreService, validators
 │  │  ├─ Authors/
 │  │  ├─ Books/
 │  │  ├─ Auth/
-│  │  └─ Abstractions/        repository + unit-of-work contracts, paging types
-│  ├─ LibraryCatalog.Infrastructure/
-│  │  ├─ Persistence/         DbContext, entity configurations, migrations
-│  │  ├─ Repositories/        EF Core implementations
-│  │  ├─ Security/            password hashing, JWT issuing
-│  │  └─ DependencyInjection.cs
-│  └─ LibraryCatalog.Api/
-│     ├─ Endpoints/           Minimal API route groups per resource
-│     ├─ Middleware/          correlation id, exception handling
-│     └─ Program.cs
+│  │  └─ Common/              paging types, service-level exceptions
+│  └─ LibraryCatalog.Infrastructure/
+│     ├─ Entities/            Genre, Author, Book
+│     ├─ Persistence/         DbContext, entity configurations, migrations
+│     ├─ Repositories/        GenreRepository, AuthorRepository, BookRepository
+│     ├─ Security/            password hashing, JWT issuing
+│     └─ DependencyInjection.cs
 └─ tests/
-   ├─ LibraryCatalog.UnitTests/
-   └─ LibraryCatalog.IntegrationTests/
+   └─ LibraryCatalog.Tests/
+      ├─ Unit/                validators, ISBN checksum, DTO mapping
+      └─ Integration/         WebApplicationFactory + Testcontainers (PostgreSQL)
 ```
 
 ### Request flow
 
-`HTTP request` → endpoint (binding + auth policy) → validator → application service (orchestration, uniqueness checks) → domain entity (invariants) → repository → EF Core → PostgreSQL, and the response maps back to a DTO. Errors are never returned as strings from services — they are thrown as typed domain exceptions and translated once, at the edge.
+`HTTP request` → controller (binding + auth policy) → validator → application service (orchestration, uniqueness checks) → repository → EF Core → PostgreSQL, and the response maps back to a DTO. Errors are never returned as strings from services — they are thrown as typed exceptions and translated once, at the edge.
 
 ### Error handling
 
@@ -171,12 +165,12 @@ Every problem response carries the `correlationId`, so a user-reported error map
 
 ### Validation
 
-Two layers, on purpose, because they answer different questions:
+Two checks, on purpose, because they answer different questions:
 
-- **FluentValidation** at the boundary answers *"is this request well-formed?"* — required fields, string lengths, ISBN shape, page size bounds. It runs before any database access and returns all field errors at once.
-- **Domain entities** answer *"is this state legal?"* — enforced in constructors and methods, so an entity cannot be constructed in an invalid state regardless of which caller reached it.
+- **FluentValidation** at the API boundary answers *"is this request well-formed?"* — required fields, string lengths, ISBN shape, page size bounds. It runs before any database access and returns all field errors at once.
+- **Application services** answer *"is this state legal?"* — uniqueness, referenced author/genre existing, delete guards — checked before hitting the database.
 
-Uniqueness sits between the two: checked by the application service for a clean `409`, and backed by a database unique index so a race cannot slip a duplicate through.
+A database unique index and `RESTRICT` foreign keys back both of these up, so a race condition cannot slip a duplicate or an orphan through even if the service-level check is bypassed.
 
 ### Logging and observability
 
@@ -279,7 +273,7 @@ Any of the three permitted engines would model this domain correctly, so the tie
 - **First-class EF Core support.** Npgsql is a mature, well-maintained provider with good coverage of the constructs used here — case-insensitive text via `citext`, `timestamptz`, UUID keys, and correct translation of the filter and sort expressions behind the list endpoints.
 - **Portability.** It behaves identically on Windows, macOS, Linux and CI, so "works on my machine" is not part of the review.
 
-**The honest counter-argument:** in a .NET shop already running SQL Server, alignment with the existing platform — licenses, DBA expertise, backup and monitoring tooling — usually outweighs every point above, and I would pick SQL Server there without hesitation. The EF Core abstraction means that swap is contained in `Infrastructure`: a provider package, a connection string, and regenerated migrations. Nothing in `Domain` or `Application` moves.
+**The honest counter-argument:** in a .NET shop already running SQL Server, alignment with the existing platform — licenses, DBA expertise, backup and monitoring tooling — usually outweighs every point above, and I would pick SQL Server there without hesitation. The EF Core abstraction means that swap is contained in `Infrastructure`: a provider package, a connection string, regenerated migrations, and updated entity configurations. Nothing in `Application` or `Api` moves.
 
 ### Schema
 
@@ -336,10 +330,10 @@ The brief's rules, plus the additional validations it invites — each chosen be
 
 | Rule | Enforced where |
 |---|---|
-| A book belongs to exactly one author and one genre | Non-nullable foreign keys; entity constructor requires both |
+| A book belongs to exactly one author and one genre | Non-nullable foreign keys; required in the request DTO |
 | A genre may have many books; an author may have many books | Schema relationship |
 | Genre name is unique, case-insensitive, 2–100 characters | Service check → `409`; `citext` unique index as backstop |
-| Book title is required, 1–200 characters | Validator + entity invariant |
+| Book title is required, 1–200 characters | Validator |
 | ISBN, when provided, is a valid ISBN-10/13 and unique | Validator (checksum) + partial unique index |
 | Publication year, when provided, falls between 1450 and next year | Validator — Gutenberg's press is a defensible floor; the ceiling allows announced titles |
 | Author birth date, when provided, is in the past | Validator |
@@ -375,10 +369,13 @@ The target is confidence per minute of runtime, not a coverage number. Tests con
 
 | Layer | Tool | What it covers |
 |---|---|---|
-| **Unit — domain** | xUnit + FluentAssertions | Entity invariants: a book cannot exist without an author or genre, a genre name must be within bounds, an ISBN checksum must hold. No mocks — these are pure functions over state. |
-| **Unit — application** | xUnit + NSubstitute | Use-case orchestration against faked repositories: duplicate name yields conflict, missing reference yields not-found, delete with dependents is refused, update touches only what changed. |
-| **Integration — API** | `WebApplicationFactory` + Testcontainers (PostgreSQL) | The full stack against a real database in a disposable container: routing, model binding, auth policies, EF Core query translation, migrations, unique constraints, and the shape of every problem response. |
+| **Unit** | xUnit + FluentAssertions | Logic with no database involved: FluentValidation rules, the ISBN checksum, DTO mapping. Pure functions over state — no mocks. |
+| **Integration** | `WebApplicationFactory` + Testcontainers (PostgreSQL) | The full stack against a real database in a disposable container: routing, model binding, auth policies, service orchestration, EF Core query translation, migrations, unique constraints, and the shape of every problem response. |
 | **Frontend** | Vitest + Testing Library + MSW | The paths where a user loses data: form validation and submission, server-error mapping back to fields, list pagination and search, and the delete-blocked confirmation flow. |
+
+Both backend suites live in one project, `LibraryCatalog.Tests`, split into `Unit/` and `Integration/` folders — one project to configure and run, the split kept at the folder level since the two suites have different runtimes and dependencies (Testcontainers only spins up for `Integration/`), not different tooling.
+
+**Why service orchestration is not unit-tested against a mocked repository.** `GenreRepository`, `AuthorRepository` and `BookRepository` are concrete classes, not interfaces (see [Architecture](#3-architecture)) — a deliberate choice, since EF Core is a one-way commitment here. Mocking a concrete class would mean marking its methods `virtual` purely so a test double could override them, which distorts production code to serve a test. Service orchestration — duplicate name yields conflict, missing reference yields not-found, delete with dependents is refused — is instead verified by the integration suite, against the real repository and a real database.
 
 **Why integration tests use a real PostgreSQL and not the in-memory provider.** The in-memory provider does not enforce unique constraints, does not enforce referential integrity, and does not translate LINQ the way Npgsql does — so precisely the behavior these tests exist to verify is the behavior it fakes. Testcontainers costs a few seconds of container startup and buys tests that fail for the same reasons production would.
 
@@ -400,9 +397,9 @@ The decisions worth defending, and what each one cost.
 
 | Decision | Alternative considered | Why this way | Cost accepted |
 |---|---|---|---|
-| Lean Clean Architecture, four projects | Vertical slices; or a single API project | Separation of responsibilities and future evolution are explicit evaluation criteria, and the layering keeps business rules testable without infrastructure. Slices are a strong fit for larger feature sets but need more defending; a single project would read as thin. | More files and one mapping hop for what is, today, CRUD. |
+| Three-layer split (Api / Application / Infrastructure), no Domain project | Clean Architecture with an isolated Domain project; or a single API project | Three layers already give `Api`, `Application` and `Infrastructure` one reason each to change, which is what "separation of responsibilities" is actually asking for. A Domain project would add framework-independence for an ORM this solution is already committed to; a single project would read as thin against an explicit evaluation criterion. | `Application` and `Infrastructure` share the entity types, so a change to persistence shape (a new column, a renamed relationship) can ripple into `Application` directly instead of being absorbed by a translation layer. |
 | Plain services for use cases | MediatR / CQRS | The pipeline concerns a mediator usually justifies are already handled by middleware and filters here. Adding it would be ceremony. | If the domain grows commands with genuinely different read and write models, this becomes a refactor. |
-| Thin repository interfaces per aggregate | Injecting `DbContext` into application services | Keeps `Application` free of EF Core types and makes use-case tests fast and mock-free. | `DbContext` is already a unit of work and a repository, so this is a real layer of indirection — the counter-argument is legitimate, and I would drop the abstraction in a codebase committed to EF Core for good. |
+| Concrete repository classes, no interfaces | `IGenreRepository`-style abstraction; or injecting `DbContext` directly into services | An interface here would exist to support a second implementation that will never ship — PostgreSQL via EF Core is a one-way decision. Concrete repositories still keep LINQ and EF Core specifics out of `Application`, without inventing a seam nothing will use. | Service orchestration cannot be unit-tested against a mocked repository (nothing to mock against); that coverage moved to the integration suite instead — see [Testing strategy](#10-testing-strategy). |
 | PostgreSQL | SQL Server | Free, tiny image, fast startup, mature EF Core provider — which is what makes containerized integration tests and a one-command run realistic. | Loses alignment with the typical .NET shop's existing platform and tooling. |
 | Delete blocked when dependents exist (`409`) | Cascade delete; soft delete | Cascade destroys data on a single click. Soft delete leaks into every query and index for value this scope does not need. | The user must clear or reassign books before deleting — more clicks, but no surprises. |
 | React + Vite | Angular | Faster to a working, tested SPA within three days, which left the time where the evaluation weight is — the backend and its documentation. | Less prescriptive structure; conventions had to be chosen and stated rather than inherited. |
