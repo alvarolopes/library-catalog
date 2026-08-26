@@ -87,6 +87,7 @@ public class GlobalExceptionHandler(
 
     private static string TitleFor(string problemType) => problemType switch
     {
+        "malformed-request" => "The request could not be read.",
         "resource-not-found" => "Resource not found.",
         "duplicate-resource" => "Resource already exists.",
         "resource-in-use" => "Resource is still in use.",
