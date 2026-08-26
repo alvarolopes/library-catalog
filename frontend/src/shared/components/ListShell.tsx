@@ -10,6 +10,13 @@ interface ListShellProps {
   isEmpty: boolean
   children: ReactNode
   actions?: ReactNode
+  /**
+   * A list nested inside a detail page sits under that page's own heading, so it
+   * must not emit a second `h1`. Defaults to the top level for the standalone pages.
+   */
+  headingLevel?: 1 | 2
+  /** Replaces the default "No records match this view." for a nested list. */
+  emptyMessage?: string
 }
 
 /**
@@ -25,11 +32,23 @@ export function ListShell({
   isEmpty,
   children,
   actions,
+  headingLevel = 1,
+  emptyMessage = 'No records match this view.',
 }: ListShellProps) {
+  const Heading = headingLevel === 1 ? 'h1' : 'h2'
+
   return (
     <section>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <Heading
+          className={
+            headingLevel === 1
+              ? 'text-2xl font-semibold tracking-tight'
+              : 'text-lg font-semibold tracking-tight'
+          }
+        >
+          {title}
+        </Heading>
         {actions}
       </div>
 
@@ -50,9 +69,7 @@ export function ListShell({
         </Message>
       )}
 
-      {!isLoading && error == null && isEmpty && (
-        <Message>No records match this view.</Message>
-      )}
+      {!isLoading && error == null && isEmpty && <Message>{emptyMessage}</Message>}
 
       {!isLoading && error == null && !isEmpty && children}
     </section>

@@ -2,8 +2,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NavLink, Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 import { SessionControl } from '@/features/auth/SessionControl'
 import { SessionProvider } from '@/features/auth/session'
+import { AuthorDetailPage } from '@/features/authors/AuthorDetailPage'
 import { AuthorsListPage } from '@/features/authors/AuthorsListPage'
+import { BookDetailPage } from '@/features/books/BookDetailPage'
 import { BooksListPage } from '@/features/books/BooksListPage'
+import { GenreDetailPage } from '@/features/genres/GenreDetailPage'
 import { GenresListPage } from '@/features/genres/GenresListPage'
 
 const queryClient = new QueryClient({
@@ -65,8 +68,11 @@ export function App() {
             <Routes>
               <Route path="/" element={<Navigate to="/books" replace />} />
               <Route path="/books" element={<BooksListPage />} />
+              <Route path="/books/:id" element={<BookDetailPage />} />
               <Route path="/authors" element={<AuthorsListPage />} />
+              <Route path="/authors/:id" element={<AuthorDetailPage />} />
               <Route path="/genres" element={<GenresListPage />} />
+              <Route path="/genres/:id" element={<GenreDetailPage />} />
             </Routes>
           </Layout>
         </Router>

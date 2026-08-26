@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ApiError } from '@/shared/api/client'
 import { booksApi } from '@/shared/api/resources'
 import type { BookPayload } from '@/shared/api/resources'
@@ -77,9 +78,21 @@ export function BooksListPage() {
         >
           {result?.items.map((book) => (
             <tr key={book.id} className="hover:bg-slate-50">
-              <td className="px-4 py-3 font-medium">{book.title}</td>
-              <td className="px-4 py-3 text-slate-600">{book.author.name}</td>
-              <td className="px-4 py-3 text-slate-600">{book.genre.name}</td>
+              <td className="px-4 py-3 font-medium">
+                <Link to={`/books/${book.id}`} className="text-slate-900 hover:underline">
+                  {book.title}
+                </Link>
+              </td>
+              <td className="px-4 py-3 text-slate-600">
+                <Link to={`/authors/${book.author.id}`} className="hover:underline">
+                  {book.author.name}
+                </Link>
+              </td>
+              <td className="px-4 py-3 text-slate-600">
+                <Link to={`/genres/${book.genre.id}`} className="hover:underline">
+                  {book.genre.name}
+                </Link>
+              </td>
               <td className="px-4 py-3 text-slate-600">{book.publicationYear ?? '—'}</td>
               <td className="px-4 py-3 font-mono text-xs text-slate-500">{book.isbn ?? '—'}</td>
               {isSignedIn && (

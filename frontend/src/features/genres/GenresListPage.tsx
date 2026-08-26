@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ApiError } from '@/shared/api/client'
 import { genresApi } from '@/shared/api/resources'
 import type { Genre } from '@/shared/api/types'
@@ -76,7 +77,11 @@ export function GenresListPage() {
         <Table headers={isSignedIn ? ['Name', 'Description', 'Actions'] : ['Name', 'Description']}>
           {result?.items.map((genre) => (
             <tr key={genre.id} className="hover:bg-slate-50">
-              <td className="px-4 py-3 font-medium">{genre.name}</td>
+              <td className="px-4 py-3 font-medium">
+                <Link to={`/genres/${genre.id}`} className="text-slate-900 hover:underline">
+                  {genre.name}
+                </Link>
+              </td>
               <td className="px-4 py-3 text-slate-600">{genre.description ?? '-'}</td>
               {isSignedIn && (
                 <td className="whitespace-nowrap px-4 py-3 text-right">
