@@ -414,6 +414,8 @@ Both backend suites live in one project, `LibraryCatalog.Tests`, split into `Uni
 cd backend && dotnet test
 ```
 
+The backend suite starts a disposable PostgreSQL instance with Testcontainers, so Docker must be running before this command. It does not use the database from `docker compose`.
+
 ```bash
 cd frontend && npm test
 ```
