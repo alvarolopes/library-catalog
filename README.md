@@ -4,7 +4,7 @@ A small catalog system to search, register and maintain **genres**, **authors** 
 
 > **Build status:** documentation-first. This README describes the solution as designed; the code is being implemented against it. This note is removed once the repository fully matches the document.
 
-**Stack:** .NET 10 (ASP.NET Core Web API) · React 19 + TypeScript + Vite · PostgreSQL 17 · EF Core 10 · Docker Compose
+**Stack:** .NET 10 (ASP.NET Core Web API) · React 19 + TypeScript + Vite · PostgreSQL 17 · EF Core 10 · Docker Compose · Playwright
 
 ---
 
@@ -46,7 +46,7 @@ Every entity supports create, search, update and delete. The SPA exposes the rel
 | Errors | RFC 9457 `application/problem+json` on every failure path, consistent across the API |
 | Auth | Public reads, JWT-protected writes (see [Security](#9-security)) |
 | Observability | Structured logs with correlation id, `/health` endpoint |
-| Tests | Unit tests for validators and pure logic, integration tests for service orchestration against a real PostgreSQL |
+| Tests | Unit, integration (real PostgreSQL), frontend component and one Playwright E2E test — see [Testing strategy](#10-testing-strategy) |
 | Run | `docker compose up` — database, API and SPA |
 
 ---
@@ -248,8 +248,10 @@ frontend/
 │  │  ├─ components/  table, pagination, form fields, dialogs, toasts
 │  │  └─ hooks/
 │  └─ main.tsx
-└─ tests/
+└─ tests/             Vitest — component and hook tests
 ```
+
+Playwright lives outside `frontend/`, in a top-level `e2e/`: it drives a real browser against the containers started by `docker compose up`, so it belongs with the system as a whole rather than inside either app.
 
 **Organized by feature, not by file type.** A `components/`, `hooks/`, `services/` split scatters one screen across three folders; grouping by feature means everything a resource needs sits together and the boundary between features stays visible. Genuinely shared pieces are the exception, and they live in `shared/`.
 
@@ -365,19 +367,34 @@ Reads are public; writes require a bearer token and the `staff` role. This mirro
 
 ## 10. Testing strategy
 
-The target is confidence per minute of runtime, not a coverage number. Tests concentrate where a bug would be both likely and expensive.
+The target is confidence per minute of runtime, not a coverage number. Tests concentrate where a bug would be both likely and expensive, and the pyramid is shaped on purpose — narrow at the top, because a browser-driven test is the slowest and most brittle way to catch a bug that a unit or integration test would catch just as well:
+
+```
+        ▲
+       ╱ ╲        E2E — 1 golden-path test, Playwright
+      ╱───╲       (create genre → author → book, see it resolved in the UI)
+     ╱     ╲
+    ╱───────╲     Integration — API + real PostgreSQL, Testcontainers
+   ╱         ╲    (routing, auth, service orchestration, constraints, problem responses)
+  ╱───────────╲
+ ╱             ╲  Unit — pure logic, no I/O
+╱───────────────╲ (validators, ISBN checksum, DTO mapping) + Frontend component tests
+```
 
 | Layer | Tool | What it covers |
 |---|---|---|
 | **Unit** | xUnit + FluentAssertions | Logic with no database involved: FluentValidation rules, the ISBN checksum, DTO mapping. Pure functions over state — no mocks. |
 | **Integration** | `WebApplicationFactory` + Testcontainers (PostgreSQL) | The full stack against a real database in a disposable container: routing, model binding, auth policies, service orchestration, EF Core query translation, migrations, unique constraints, and the shape of every problem response. |
-| **Frontend** | Vitest + Testing Library + MSW | The paths where a user loses data: form validation and submission, server-error mapping back to fields, list pagination and search, and the delete-blocked confirmation flow. |
+| **Frontend** | Vitest + Testing Library + MSW | The paths where a user loses data: form validation and submission, server-error mapping back to fields, list pagination and search, and the delete-blocked confirmation flow. API calls are mocked at the network boundary (MSW), so these run without a backend. |
+| **E2E** | Playwright, against `docker compose up` | One golden-path test: create a genre, an author and a book through the real UI, and confirm the book resolves both in a real browser talking to the real API and database. This is the only layer that exercises the system the way a user actually would — everything below it mocks or contains a piece of the stack. |
 
 Both backend suites live in one project, `LibraryCatalog.Tests`, split into `Unit/` and `Integration/` folders — one project to configure and run, the split kept at the folder level since the two suites have different runtimes and dependencies (Testcontainers only spins up for `Integration/`), not different tooling.
 
 **Why service orchestration is not unit-tested against a mocked repository.** `GenreRepository`, `AuthorRepository` and `BookRepository` are concrete classes, not interfaces (see [Architecture](#3-architecture)) — a deliberate choice, since EF Core is a one-way commitment here. Mocking a concrete class would mean marking its methods `virtual` purely so a test double could override them, which distorts production code to serve a test. Service orchestration — duplicate name yields conflict, missing reference yields not-found, delete with dependents is refused — is instead verified by the integration suite, against the real repository and a real database.
 
 **Why integration tests use a real PostgreSQL and not the in-memory provider.** The in-memory provider does not enforce unique constraints, does not enforce referential integrity, and does not translate LINQ the way Npgsql does — so precisely the behavior these tests exist to verify is the behavior it fakes. Testcontainers costs a few seconds of container startup and buys tests that fail for the same reasons production would.
+
+**Why only one E2E test, not a suite.** Every scenario the E2E test could cover — validation errors, the delete-blocked confirmation, pagination — is already covered faster and more reliably by the layers below it. The one Playwright test earns its place by checking something nothing else does: that the built frontend, the running API and a real database actually agree with each other. A second E2E test would mostly be re-proving that agreement, not finding new bugs.
 
 ```bash
 cd backend && dotnet test
@@ -387,7 +404,11 @@ cd backend && dotnet test
 cd frontend && npm test
 ```
 
-**What is not covered:** no end-to-end browser tests, no load or performance tests, and no mutation testing. At three days, the marginal bug caught did not justify the setup time — noted here rather than left for the reader to discover.
+```bash
+docker compose up -d && npx playwright test
+```
+
+**What is not covered:** load or performance tests, and mutation testing. At three days, the marginal bug caught did not justify the setup time — noted here rather than left for the reader to discover.
 
 ---
 
@@ -419,7 +440,7 @@ The decisions worth defending, and what each one cost.
 - **No soft delete and no audit history.** Once a record is deleted, it is gone, and there is no record of who changed what.
 - **Single-language UI, no i18n and no accessibility audit.** Semantic HTML and labelled controls are used, but no assistive-technology testing was done.
 - **No CI pipeline.** Tests run locally; nothing enforces them on push.
-- **No end-to-end tests**, and the frontend test suite covers key flows rather than every screen.
+- **Only one E2E test.** Playwright covers the golden path (create genre → author → book); edge cases and error states are not exercised end-to-end, only through unit/integration/component tests. The frontend test suite likewise covers key flows rather than every screen.
 
 ---
 
@@ -434,7 +455,7 @@ Roughly in the order I would actually pick them up:
 5. **Optimistic concurrency** on updates via a row version, returning `412` instead of letting the last writer win silently — the current behavior is fine for one librarian and wrong for five.
 6. **Richer domain** — multiple authors per book, sub-genres, copies and loans. Each is a real cataloging need, and the first would turn the book–author relationship into many-to-many, which is exactly the kind of change the current layering is meant to absorb cheaply.
 7. **Bulk import** from CSV or ONIX, with validation reporting per row.
-8. **End-to-end tests** on the critical paths, and accessibility testing on the SPA.
+8. **More E2E coverage** — a few more Playwright scenarios (validation errors, the delete-blocked flow) beyond the one golden path — plus accessibility testing on the SPA.
 
 ---
 
@@ -446,7 +467,8 @@ library-catalog/
 ├─ docker-compose.yml
 ├─ docs/adr/          architecture decision records
 ├─ backend/           .NET solution — src/ and tests/
-└─ frontend/          React SPA
+├─ frontend/          React SPA
+└─ e2e/               Playwright — golden-path test against the full stack
 ```
 
 Decisions with lasting consequences are recorded as short ADRs in `docs/adr/`, so the reasoning survives independently of this README and of me.
