@@ -18,9 +18,8 @@ interface DialogProps {
   children: ReactNode
   maxWidthClassName?: string
   /**
-   * While a request is in flight, Escape and backdrop clicks are ignored. Closing
-   * mid-request would unmount the dialog before its outcome is known, so a refused
-   * delete would resolve into a component nobody can see.
+   * While a request is in flight, Escape and backdrop clicks are ignored. Explicit
+   * Cancel controls remain available so a hung request never traps the user here.
    */
   isBusy?: boolean
 }

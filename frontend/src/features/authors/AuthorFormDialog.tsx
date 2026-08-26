@@ -8,7 +8,20 @@ import type { Author } from '@/shared/api/types'
 import { Dialog } from '@/shared/components/Dialog'
 import { Field } from '@/shared/components/Field'
 
-const TODAY = new Date().toISOString().slice(0, 10)
+function toDateInputValue(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function getLatestBirthDate(): string {
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  return toDateInputValue(yesterday)
+}
 
 function isPastDate(value: string): boolean {
   if (value === '') {
@@ -21,7 +34,7 @@ function isPastDate(value: string): boolean {
     /^\d{4}-\d{2}-\d{2}$/.test(value) &&
     !Number.isNaN(date.getTime()) &&
     date.toISOString().slice(0, 10) === value &&
-    value < TODAY
+    value <= getLatestBirthDate()
   )
 }
 
@@ -53,6 +66,7 @@ interface AuthorFormDialogProps {
 export function AuthorFormDialog({ author, onClose, onSubmit }: AuthorFormDialogProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const isEditing = author !== undefined
+  const latestBirthDate = getLatestBirthDate()
 
   const {
     register,
@@ -114,7 +128,7 @@ export function AuthorFormDialog({ author, onClose, onSubmit }: AuthorFormDialog
         <Field label="Birth date" error={errors.birthDate?.message}>
           <input
             type="date"
-            max={TODAY}
+            max={latestBirthDate}
             {...register('birthDate')}
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />

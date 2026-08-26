@@ -103,9 +103,8 @@ export function GenreFormDialog({ genre, onClose, onSubmit }: GenreFormDialogPro
         <div className="flex justify-end gap-2 pt-1">
           <button
             type="button"
-            disabled={isSubmitting}
             onClick={onClose}
-            className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
           >
             Cancel
           </button>
