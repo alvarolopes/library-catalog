@@ -444,6 +444,7 @@ The decisions worth defending, and what each one cost.
 - **Auth is minimal.** One seeded user, no registration, no refresh tokens, no revocation, no rate limiting on login, no account lockout.
 - **No caching layer, and no `ETag` / `If-None-Match`.** Every read hits the database. Fine at this size; the first thing to revisit under load.
 - **Sorting is limited to an allowlist of columns.** Deliberate — it prevents arbitrary expressions reaching the query — but less flexible than a general query language.
+- **Book reference pickers cap at 100 authors and genres.** They load the first 100 alphabetically (plus the current value while editing); a searchable, paginated combobox is deferred.
 - **No soft delete and no audit history.** Once a record is deleted, it is gone, and there is no record of who changed what.
 - **Single-language UI, no i18n and no accessibility audit.** Semantic HTML and labelled controls are used, but no assistive-technology testing was done.
 - **No CI pipeline.** Tests run locally; nothing enforces them on push.
