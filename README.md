@@ -118,30 +118,32 @@ The trade-off this buys: `Application` knows it is calling EF Core-backed reposi
 
 ```
 backend/
-├─ LibraryCatalog.sln
+├─ LibraryCatalog.slnx
+├─ Dockerfile
 ├─ src/
 │  ├─ LibraryCatalog.Api/
 │  │  ├─ Controllers/         GenresController, AuthorsController, BooksController, AuthController
-│  │  ├─ Dtos/                request/response models per resource
-│  │  ├─ Middleware/          correlation id, global exception handling
+│  │  ├─ Middleware/          correlation id, global exception handling, validation filter
 │  │  └─ Program.cs
 │  ├─ LibraryCatalog.Application/
-│  │  ├─ Genres/              GenreService, validators
+│  │  ├─ Genres/              GenreService, request/response DTOs, validators
 │  │  ├─ Authors/
 │  │  ├─ Books/
 │  │  ├─ Auth/
-│  │  └─ Common/              paging types, service-level exceptions
+│  │  └─ Common/              paging types, ISBN checksum, service-level exceptions
 │  └─ LibraryCatalog.Infrastructure/
-│     ├─ Entities/            Genre, Author, Book
-│     ├─ Persistence/         DbContext, entity configurations, migrations
-│     ├─ Repositories/        GenreRepository, AuthorRepository, BookRepository
+│     ├─ Entities/            Genre, Author, Book, User
+│     ├─ Persistence/         DbContext, entity configurations, migrations, seeder
+│     ├─ Repositories/        GenreRepository, AuthorRepository, BookRepository, UserRepository
 │     ├─ Security/            password hashing, JWT issuing
 │     └─ DependencyInjection.cs
 └─ tests/
    └─ LibraryCatalog.Tests/
-      ├─ Unit/                validators, ISBN checksum, DTO mapping
+      ├─ Unit/                validators, ISBN checksum, paging arithmetic
       └─ Integration/         WebApplicationFactory + Testcontainers (PostgreSQL)
 ```
+
+**DTOs live with the service that owns them**, in `Application/<Feature>/`, not in `Api/`. `Application` has to name the types it accepts and returns, and `Api` already depends on `Application` — putting the DTOs in `Api` would invert that and make the dependency circular. The controllers bind straight to these records and return them, so there is one shape per concept rather than an API model and an application model that must be kept in step.
 
 ### Request flow
 
@@ -383,7 +385,7 @@ The target is confidence per minute of runtime, not a coverage number. Tests con
 
 | Layer | Tool | What it covers |
 |---|---|---|
-| **Unit** | xUnit + FluentAssertions | Logic with no database involved: FluentValidation rules, the ISBN checksum, DTO mapping. Pure functions over state — no mocks. |
+| **Unit** | xUnit + Shouldly | Logic with no database involved: FluentValidation rules, the ISBN checksum, paging arithmetic. Pure functions over state — no mocks. |
 | **Integration** | `WebApplicationFactory` + Testcontainers (PostgreSQL) | The full stack against a real database in a disposable container: routing, model binding, auth policies, service orchestration, EF Core query translation, migrations, unique constraints, and the shape of every problem response. |
 | **Frontend** | Vitest + Testing Library + MSW | The paths where a user loses data: form validation and submission, server-error mapping back to fields, list pagination and search, and the delete-blocked confirmation flow. API calls are mocked at the network boundary (MSW), so these run without a backend. |
 | **E2E** | Playwright, against `docker compose up` | One golden-path test: create a genre, an author and a book through the real UI, and confirm the book resolves both in a real browser talking to the real API and database. This is the only layer that exercises the system the way a user actually would — everything below it mocks or contains a piece of the stack. |
@@ -391,6 +393,8 @@ The target is confidence per minute of runtime, not a coverage number. Tests con
 Both backend suites live in one project, `LibraryCatalog.Tests`, split into `Unit/` and `Integration/` folders — one project to configure and run, the split kept at the folder level since the two suites have different runtimes and dependencies (Testcontainers only spins up for `Integration/`), not different tooling.
 
 **Why service orchestration is not unit-tested against a mocked repository.** `GenreRepository`, `AuthorRepository` and `BookRepository` are concrete classes, not interfaces (see [Architecture](#3-architecture)) — a deliberate choice, since EF Core is a one-way commitment here. Mocking a concrete class would mean marking its methods `virtual` purely so a test double could override them, which distorts production code to serve a test. Service orchestration — duplicate name yields conflict, missing reference yields not-found, delete with dependents is refused — is instead verified by the integration suite, against the real repository and a real database.
+
+**Why Shouldly and not FluentAssertions.** FluentAssertions is the more common choice in .NET, but version 8 moved to a commercial licence — free only for open-source and non-commercial use. Shipping a solution whose test suite a company cannot run without buying a licence is a poor default, so the assertion library here is Shouldly (MIT), which reads much the same.
 
 **Why integration tests use a real PostgreSQL and not the in-memory provider.** The in-memory provider does not enforce unique constraints, does not enforce referential integrity, and does not translate LINQ the way Npgsql does — so precisely the behavior these tests exist to verify is the behavior it fakes. Testcontainers costs a few seconds of container startup and buys tests that fail for the same reasons production would.
 
