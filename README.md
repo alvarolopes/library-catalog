@@ -2,8 +2,6 @@
 
 A small catalog system to search, register and maintain **genres**, **authors** and **books** — built for the [Senior Software Engineer technical challenge](docs/technical-challenge.pdf) briefed in this repository.
 
-> **Build status:** documentation-first. This README describes the solution as designed; the code is being implemented against it. This note is removed once the repository fully matches the document.
-
 **Stack:** .NET 10 (ASP.NET Core Web API) · React 19 + TypeScript + Vite · Tailwind CSS · PostgreSQL 17 · EF Core 10 · Docker Compose · Playwright
 
 ---
@@ -41,7 +39,7 @@ Every entity supports create, search, update and delete. The SPA exposes the rel
 | Area | Delivered |
 |---|---|
 | CRUD | Genres, authors and books — full create / read / update / delete |
-| Search | Free-text search, pagination and sorting on every list endpoint |
+| Search | Free-text search and pagination throughout; sorting is offered by the API but not yet wired into the UI |
 | Relationships | Books resolve author and genre, and every one is navigable — a book links to both, and each lists the books that depend on it; deletes that would orphan books are rejected |
 | Errors | RFC 9457 `application/problem+json` on every failure path, consistent across the API |
 | Auth | Public reads, JWT-protected writes (see [Security](#9-security)) |
@@ -269,7 +267,9 @@ Playwright lives outside `frontend/`, in a top-level `e2e/`: it drives a real br
 
 **Forms via React Hook Form + Zod.** The Zod schema mirrors the API validation rules, so obvious mistakes are caught before a request is sent — while the server still validates independently, since client-side validation is a usability feature, not a security boundary. Server-side field errors from a `400` are mapped back onto the matching form fields.
 
-**Screens:** list pages with search, sortable columns and pagination; a create/edit form per resource; a delete confirmation that surfaces the `409` reason when a genre or author is still in use; and a detail page per resource — a book links through to its author and genre, and each of those lists the books that depend on it, so the relationship can be walked in both directions.
+**Screens:** list pages with search and pagination; a create/edit form per resource; a delete confirmation that surfaces the `409` reason when a genre or author is still in use; and a detail page per resource — a book links through to its author and genre, and each of those lists the books that depend on it, so the relationship can be walked in both directions.
+
+The lists are not sortable from the UI. The API accepts `sortBy` and `sortDir` on every list endpoint and validates them against a per-resource allowlist, but the SPA never sends them — the server-side half exists and the client half is [deferred](#13-what-i-would-do-with-more-time).
 
 Styling is Tailwind with a small set of local components. The brief does not require visual sophistication, so the effort went into clear states — loading, empty, error, and disabled-while-saving — rather than into a design system.
 
@@ -459,7 +459,9 @@ The decisions worth defending, and what each one cost.
 - **Secrets live in configuration.** The JWT signing key and database password are in `appsettings` and Compose environment variables. Real deployments need a secret manager and key rotation.
 - **Auth is minimal.** One seeded user, no registration, no refresh tokens, no revocation, no rate limiting on login, no account lockout.
 - **No caching layer, and no `ETag` / `If-None-Match`.** Every read hits the database. Fine at this size; the first thing to revisit under load.
-- **Sorting is limited to an allowlist of columns.** Deliberate — it prevents arbitrary expressions reaching the query — but less flexible than a general query language.
+- **Lists cannot be sorted from the UI.** The API accepts `sortBy` and `sortDir` and validates them against a per-resource allowlist, but no screen sends them, so every list shows the server's default order. Tracked as [#6](https://github.com/alvarolopes/library-catalog/issues/6).
+- **Sorting is limited to an allowlist of columns.** Deliberate — it prevents arbitrary expressions reaching the query — but it also means books cannot be ordered by author or genre name, which would need the repository to order across the join.
+- **No architecture decision records.** `docs/adr/` does not exist. The reasoning lives in [Trade-offs](#11-trade-offs) and in the pull requests, which is enough at this size but does not survive a rewrite of this document. Tracked as [#10](https://github.com/alvarolopes/library-catalog/issues/10).
 - **Book reference pickers cap at 100 authors and genres.** They load the first 100 alphabetically (plus the current value while editing); a searchable, paginated combobox is deferred.
 - **No soft delete and no audit history.** Once a record is deleted, it is gone, and there is no record of who changed what.
 - **Single-language UI, no i18n and no accessibility audit.** Semantic HTML and labelled controls are used, but no assistive-technology testing was done.
@@ -470,16 +472,18 @@ The decisions worth defending, and what each one cost.
 
 ## 13. What I would do with more time
 
-Roughly in the order I would actually pick them up:
+Every item below is an open issue on this repository, so the reasoning and the intended approach are written down rather than implied. Roughly in the order I would actually pick them up:
 
-1. **CI on every push** — build, test, and a container image build. It is the cheapest way to stop the list above from growing.
-2. **Move migrations out of startup** into a deployment job, and secrets into a secret manager.
-3. **Harden auth** — move the token into an httpOnly cookie with a refresh-token flow, add revocation, login rate limiting, and real user management rather than a seeded account.
-4. **OpenTelemetry traces and metrics** alongside the existing structured logs, so a slow request can be attributed to a specific query instead of inferred.
-5. **Optimistic concurrency** on updates via a row version, returning `412` instead of letting the last writer win silently — the current behavior is fine for one librarian and wrong for five.
-6. **Richer domain** — multiple authors per book, sub-genres, copies and loans. Each is a real cataloging need, and the first would turn the book–author relationship into many-to-many, which is exactly the kind of change the current layering is meant to absorb cheaply.
-7. **Bulk import** from CSV or ONIX, with validation reporting per row.
-8. **More E2E coverage** — a few more Playwright scenarios (validation errors, the delete-blocked flow) beyond the one golden path — plus accessibility testing on the SPA.
+1. **[Sortable columns](https://github.com/alvarolopes/library-catalog/issues/6)** — the server half already exists and is validated; the SPA simply never sends `sortBy`. The smallest gap between what the API offers and what the UI uses, so it goes first.
+2. **[Architecture decision records](https://github.com/alvarolopes/library-catalog/issues/10)** — lifting the decisions argued in *Trade-offs* into dated, standalone records, including the one that was reversed mid-build: the SPA's token moved from memory to `sessionStorage` once it became clear that in-memory storage does not stop the attack it claims to.
+3. **CI on every push** — build, test, and a container image build. It is the cheapest way to stop the list above from growing.
+4. **Move migrations out of startup** into a deployment job, and secrets into a secret manager.
+5. **Harden auth** — move the token into an httpOnly cookie with a refresh-token flow, add revocation, login rate limiting, and real user management rather than a seeded account.
+6. **OpenTelemetry traces and metrics** alongside the existing structured logs, so a slow request can be attributed to a specific query instead of inferred.
+7. **Optimistic concurrency** on updates via a row version, returning `412` instead of letting the last writer win silently — the current behavior is fine for one librarian and wrong for five.
+8. **Richer domain** — multiple authors per book, sub-genres, copies and loans. Each is a real cataloging need, and the first would turn the book–author relationship into many-to-many, which is exactly the kind of change the current layering is meant to absorb cheaply.
+9. **Bulk import** from CSV or ONIX, with validation reporting per row.
+10. **More E2E coverage** — a few more Playwright scenarios (validation errors, the delete-blocked flow) beyond the one golden path — plus accessibility testing on the SPA.
 
 ---
 
@@ -489,10 +493,10 @@ Roughly in the order I would actually pick them up:
 library-catalog/
 ├─ README.md
 ├─ docker-compose.yml
-├─ docs/adr/          architecture decision records
+├─ docs/              the original brief
 ├─ backend/           .NET solution — src/ and tests/
 ├─ frontend/          React SPA
 └─ e2e/               Playwright — golden-path test against the full stack
 ```
 
-Decisions with lasting consequences are recorded as short ADRs in `docs/adr/`, so the reasoning survives independently of this README and of me.
+The decisions worth defending are argued in [Trade-offs](#11-trade-offs) above, and the reasoning behind each one is also on the pull request that introduced it. Lifting them into standalone ADRs is [deferred](#13-what-i-would-do-with-more-time) — a directory of records that restate this document would be worse than a link to it.
