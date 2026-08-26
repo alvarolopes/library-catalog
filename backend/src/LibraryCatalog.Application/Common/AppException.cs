@@ -16,6 +16,16 @@ public abstract class AppException(string problemType, HttpStatusCode statusCode
     public HttpStatusCode StatusCode { get; } = statusCode;
 }
 
+/// <summary>
+/// The request body could not be read at all — malformed JSON, or a shape that does
+/// not map to the endpoint. Distinct from a validation failure because there is no
+/// field to attribute it to, and a client debugging one is looking for something
+/// different than a client fixing a field.
+/// </summary>
+public class MalformedRequestException()
+    : AppException("malformed-request", HttpStatusCode.BadRequest,
+        "The request body could not be read. Check that it is valid JSON matching the documented shape.");
+
 /// <summary>The requested resource does not exist.</summary>
 public class NotFoundException(string resource, Guid id)
     : AppException("resource-not-found", HttpStatusCode.NotFound, $"{resource} '{id}' was not found.");

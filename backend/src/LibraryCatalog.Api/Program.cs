@@ -8,6 +8,7 @@ using LibraryCatalog.Infrastructure.Entities;
 using LibraryCatalog.Infrastructure.Persistence;
 using LibraryCatalog.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -33,6 +34,12 @@ builder.Services.AddApplication();
 
 builder.Services.AddControllers(options => options.Filters.Add<ValidationFilter>());
 
+// Without this, [ApiController] answers binding failures itself, before any filter
+// runs — with a different problem shape and no correlation id. Suppressing it lets
+// ValidationFilter translate them so every error leaves through one handler.
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+    options.SuppressModelStateInvalidFilter = true);
+
 // Without this the document is titled after the assembly ("LibraryCatalog.Api | v1"),
 // which is what anyone opening the spec or the Scalar UI sees first.
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
@@ -55,17 +62,44 @@ var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOption
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options => options.TokenValidationParameters = new TokenValidationParameters
+    .AddJwtBearer(options =>
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwt.Issuer,
-        ValidAudience = jwt.Audience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
-        // No tolerance for expired tokens beyond the default five-minute drift.
-        ClockSkew = TimeSpan.FromSeconds(30)
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = jwt.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
+            // No tolerance for expired tokens beyond the default five-minute drift.
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+
+        // Authentication and authorization short-circuit the pipeline before any
+        // exception handler runs, so without these a 401 or 403 answers with an
+        // empty body while every other error answers with a problem document.
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = context =>
+            {
+                context.HandleResponse();
+
+                return ProblemResponse.WriteAsync(
+                    context.HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "unauthorized",
+                    "Authentication is required.",
+                    "This endpoint requires a bearer token. Obtain one from POST /api/v1/auth/login.");
+            },
+            OnForbidden = context => ProblemResponse.WriteAsync(
+                context.HttpContext,
+                StatusCodes.Status403Forbidden,
+                "forbidden",
+                "Not allowed.",
+                $"This endpoint requires the '{Roles.Staff}' role.")
+        };
     });
 
 builder.Services.AddAuthorizationBuilder()

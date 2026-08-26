@@ -14,6 +14,19 @@ public class ValidationFilter(IServiceProvider services) : IAsyncActionFilter
         ActionExecutingContext context,
         ActionExecutionDelegate next)
     {
+        // The automatic [ApiController] model-state response is suppressed so binding
+        // failures reach here instead of short-circuiting with a different envelope.
+        // They must be raised before the action runs: a body that failed to bind
+        // leaves its parameter null.
+        var parameterNames = context.ActionDescriptor.Parameters
+            .Select(parameter => parameter.Name)
+            .ToArray();
+
+        if (ModelStateTranslation.ToException(context.ModelState, parameterNames) is { } bindingFailure)
+        {
+            throw bindingFailure;
+        }
+
         foreach (var argument in context.ActionArguments.Values)
         {
             if (argument is null)

@@ -156,6 +156,9 @@ A single `IExceptionHandler` converts exceptions into `application/problem+json`
 | Situation | Status | `type` |
 |---|---|---|
 | Request body fails validation | `400` | `validation-failed` (includes per-field `errors`) |
+| A field cannot be bound — wrong JSON type, empty string for a date | `400` | `validation-failed`, keyed by the same property name a validator would use |
+| Body is unreadable, or maps to nothing | `400` | `malformed-request` (no field to attribute it to) |
+| Wrong email or password at login | `401` | `invalid-credentials` |
 | Missing or invalid token on a write | `401` | `unauthorized` |
 | Authenticated but lacking the `staff` role | `403` | `forbidden` |
 | Resource id does not exist | `404` | `resource-not-found` |
@@ -164,6 +167,11 @@ A single `IExceptionHandler` converts exceptions into `application/problem+json`
 | Unhandled exception | `500` | `internal-server-error` (detail suppressed outside Development) |
 
 Every problem response carries the `correlationId`, so a user-reported error maps to a log line without guesswork.
+
+Two paths do not naturally reach the handler and had to be routed into it deliberately, because both otherwise answer with a shape of their own:
+
+- **Model binding.** `[ApiController]` answers a binding failure itself, before any filter runs — with a spec-URL `type`, no correlation id, and error keys like `$.publicationYear` that no client can map to a form field. The automatic filter is suppressed and `ValidationFilter` translates `ModelState` instead, normalising binder paths to the PascalCase property names FluentValidation already uses. The binder's own wording names internal types and byte offsets, so it is replaced; the original stays in the log.
+- **Authentication and authorization.** These short-circuit the pipeline, so a `401` or `403` used to return an empty body. `JwtBearerEvents` now writes the same problem document.
 
 ### Validation
 
