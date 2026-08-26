@@ -1,6 +1,6 @@
 # Library Catalog
 
-A small catalog system to search, register and maintain **genres**, **authors** and **books** — built as a technical challenge for a Senior Software Engineer position.
+A small catalog system to search, register and maintain **genres**, **authors** and **books** — built for the [Senior Software Engineer technical challenge](docs/technical-challenge.pdf) briefed in this repository.
 
 > **Build status:** documentation-first. This README describes the solution as designed; the code is being implemented against it. This note is removed once the repository fully matches the document.
 
@@ -53,8 +53,6 @@ Every entity supports create, search, update and delete. The SPA exposes the rel
 
 ## 2. Getting started
 
-### Option A — Docker (recommended)
-
 The only prerequisite is Docker with Compose v2.
 
 ```bash
@@ -71,37 +69,7 @@ docker compose up --build
 | Health | http://localhost:8080/health |
 | PostgreSQL | `localhost:5432` — db `librarycatalog`, user `postgres`, password `postgres` |
 
-The API applies EF Core migrations and seeds reference data on startup, so the catalog is browsable immediately. No manual database setup step is required.
-
-### Option B — Run locally
-
-**Prerequisites:** .NET SDK 10, Node.js 22+, and a PostgreSQL 16+ instance.
-
-```bash
-# 1. database (or point the connection string at your own instance)
-docker run -d --name librarycatalog-db -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=librarycatalog postgres:17-alpine
-
-# 2. backend — migrations run automatically on startup
-cd backend
-dotnet run --project src/LibraryCatalog.Api
-
-# 3. frontend (new terminal)
-cd frontend
-npm install
-npm run dev
-```
-
-The connection string lives in `backend/src/LibraryCatalog.Api/appsettings.Development.json` and can be overridden with the `ConnectionStrings__Default` environment variable. The SPA reads the API base URL from `VITE_API_BASE_URL` (defaults to `http://localhost:8080`).
-
-### Database setup by hand
-
-Migrations are the source of truth for the schema — there is no hand-written DDL to keep in sync. To apply them explicitly instead of on startup:
-
-```bash
-cd backend
-dotnet tool restore
-dotnet ef database update --project src/LibraryCatalog.Infrastructure --startup-project src/LibraryCatalog.Api
-```
+The API applies EF Core migrations and seeds reference data on startup, so the catalog is browsable immediately. No manual database setup step is required. Migrations are the source of truth for the schema — there is no hand-written DDL to keep in sync.
 
 ### Seeded credentials
 
