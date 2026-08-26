@@ -20,7 +20,7 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   return (
-    <Dialog title={title} description={description} labelledBy="confirm-dialog-title" onClose={onCancel}>
+    <Dialog title={title} description={description} labelledBy="confirm-dialog-title" onClose={onCancel} isBusy={isSubmitting}>
       {error && (
         <p role="alert" className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
