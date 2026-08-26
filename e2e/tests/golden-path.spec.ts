@@ -11,7 +11,12 @@ function uniqueName(kind: string): string {
 }
 
 function uniqueIsbn(): string {
-  const body = `978${Date.now().toString().slice(-9)}`
+  // The clock alone is not enough: two books generated in the same millisecond
+  // would collide on the unique ISBN index, and the symptom — an intermittent
+  // 409 on creation — reads like a product bug rather than a fixture clash. Only
+  // the single-worker config keeps that from happening today.
+  const random = Math.floor(Math.random() * 1_000).toString().padStart(3, '0')
+  const body = `978${Date.now().toString().slice(-6)}${random}`
   const weightedSum = [...body]
     .map((digit, index) => Number(digit) * (index % 2 === 0 ? 1 : 3))
     .reduce((sum, value) => sum + value, 0)
@@ -101,12 +106,33 @@ async function deleteRecord(
   await expect(row).toHaveCount(0)
 }
 
+/**
+ * Deletes a record without throwing, returning a description of the failure instead.
+ * Teardown that throws would discard the exception the test actually failed on.
+ */
+async function tryDelete(
+  page: Page,
+  listName: 'Books' | 'Authors' | 'Genres',
+  recordName: string,
+  confirmationName: string,
+): Promise<string | null> {
+  try {
+    await deleteRecord(page, listName, recordName, confirmationName)
+    return null
+  } catch (error) {
+    const reason = error instanceof Error ? error.message.split('\n')[0] : String(error)
+
+    return `  ${listName}: "${recordName}" — ${reason}`
+  }
+}
+
 test('staff can create, view, and remove a book with its author and genre', async ({ page }) => {
   const genreName = uniqueName('Genre')
   const authorName = uniqueName('Author')
   const bookTitle = uniqueName('Book')
   const isbn = uniqueIsbn()
   let signedIn = false
+  let testSucceeded = false
 
   try {
     const catalogReady = waitForCatalog(page)
@@ -157,11 +183,26 @@ test('staff can create, view, and remove a book with its author and genre', asyn
     await expect(bookRow).toBeVisible()
     await expect(bookRow.getByRole('link', { name: authorName, exact: true })).toBeVisible()
     await expect(bookRow.getByRole('link', { name: genreName, exact: true })).toBeVisible()
+
+    testSucceeded = true
   } finally {
     if (signedIn) {
-      await deleteRecord(page, 'Books', bookTitle, 'Delete book')
-      await deleteRecord(page, 'Authors', authorName, 'Delete author')
-      await deleteRecord(page, 'Genres', genreName, 'Delete genre')
+      // Books first: deleting an author or genre that still has books is refused,
+      // which is the product behaving correctly, not the teardown failing.
+      const failures = [
+        await tryDelete(page, 'Books', bookTitle, 'Delete book'),
+        await tryDelete(page, 'Authors', authorName, 'Delete author'),
+        await tryDelete(page, 'Genres', genreName, 'Delete genre'),
+      ].filter((failure): failure is string => failure !== null)
+
+      // Teardown must not throw over a failing assertion: an exception here would
+      // replace the error the test actually failed on, leaving a timeout inside
+      // cleanup as the only diagnosis. When the test itself passed there is no
+      // error to protect, so a leak is worth failing on — it would silently poison
+      // later runs otherwise.
+      if (failures.length > 0 && testSucceeded) {
+        throw new Error(`Cleanup left records behind:\n${failures.join('\n')}`)
+      }
     }
   }
 })
