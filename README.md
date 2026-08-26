@@ -363,7 +363,9 @@ Reads are public; writes require a bearer token and the `staff` role. This mirro
 | Error leakage | Stack traces and inner exception details never cross the API boundary outside Development |
 | Abuse | `pageSize` capped; request body size limited |
 
-**Not production-ready, and deliberately so:** the signing key sits in configuration rather than a secret manager, there are no refresh tokens or revocation, no rate limiting on login, and the SPA holds the token in memory with no silent renewal. Each is a known gap listed in [Known limitations](#12-known-limitations) — the goal was a correct, complete auth path at challenge scope, not a hardened identity system.
+**Where the SPA keeps the token, and why it is not "in memory".** The token lives in `sessionStorage`: it survives a reload, not closing the tab. Holding it only in a JavaScript variable is often called the secure option, but it does not stop the attack it claims to — a script injected into the page can hook `fetch` or read component state as easily as it can read storage. It buys no real protection and costs the user their session on every refresh. The actual mitigation is an httpOnly cookie plus a refresh-token flow, which is [future work](#13-what-i-would-do-with-more-time).
+
+**Not production-ready, and deliberately so:** the signing key sits in configuration rather than a secret manager, there are no refresh tokens or revocation, and no rate limiting on login. Each is a known gap listed in [Known limitations](#12-known-limitations) — the goal was a correct, complete auth path at challenge scope, not a hardened identity system.
 
 ---
 
@@ -455,7 +457,7 @@ Roughly in the order I would actually pick them up:
 
 1. **CI on every push** — build, test, and a container image build. It is the cheapest way to stop the list above from growing.
 2. **Move migrations out of startup** into a deployment job, and secrets into a secret manager.
-3. **Harden auth** — refresh tokens, revocation, login rate limiting, and real user management rather than a seeded account.
+3. **Harden auth** — move the token into an httpOnly cookie with a refresh-token flow, add revocation, login rate limiting, and real user management rather than a seeded account.
 4. **OpenTelemetry traces and metrics** alongside the existing structured logs, so a slow request can be attributed to a specific query instead of inferred.
 5. **Optimistic concurrency** on updates via a row version, returning `412` instead of letting the last writer win silently — the current behavior is fine for one librarian and wrong for five.
 6. **Richer domain** — multiple authors per book, sub-genres, copies and loans. Each is a real cataloging need, and the first would turn the book–author relationship into many-to-many, which is exactly the kind of change the current layering is meant to absorb cheaply.
