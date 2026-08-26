@@ -117,8 +117,30 @@ public sealed class BooksEndpointsTests(IntegrationFixture fixture) : ApiTestBas
     [Fact]
     public async Task Books_list_filters_case_insensitively_and_returns_correct_paging_metadata()
     {
-        var authorId = await GetSeedIdAsync("authors", "Ursula K. Le Guin");
-        var genreId = await GetSeedIdAsync("genres", "Fantasy");
+        // Built rather than borrowed from the seeder: asserting literal seed counts
+        // means a new seeded book fails this test with a message about paging, and
+        // any future test that attaches a book to a seeded author breaks it from a
+        // file it never touched.
+        using var staff = await CreateStaffClientAsync();
+        var authorId = await CreateAuthorAsync(staff);
+        var genreId = await CreateGenreAsync(staff);
+        var otherGenreId = await CreateGenreAsync(staff);
+        var marker = Guid.NewGuid().ToString("N");
+
+        // Three books for the author, two of them in the same genre.
+        foreach (var genre in new[] { genreId, genreId, otherGenreId })
+        {
+            using var created = await staff.PostAsJsonAsync("/api/v1/books", new
+            {
+                title = $"Paging {marker} {Guid.NewGuid():N}",
+                isbn = NewIsbn(),
+                publicationYear = 2001,
+                authorId,
+                genreId = genre
+            });
+
+            created.StatusCode.ShouldBe(HttpStatusCode.Created);
+        }
 
         using (var response = await Client.GetAsync($"/api/v1/books?authorId={authorId}&pageSize=2"))
         {
@@ -127,6 +149,7 @@ public sealed class BooksEndpointsTests(IntegrationFixture fixture) : ApiTestBas
             page.GetProperty("page").GetInt32().ShouldBe(1);
             page.GetProperty("pageSize").GetInt32().ShouldBe(2);
             page.GetProperty("totalItems").GetInt32().ShouldBe(3);
+            // The partial last page still counts.
             page.GetProperty("totalPages").GetInt32().ShouldBe(2);
             page.GetProperty("items").GetArrayLength().ShouldBe(2);
 
@@ -144,11 +167,11 @@ public sealed class BooksEndpointsTests(IntegrationFixture fixture) : ApiTestBas
             page.GetProperty("totalPages").GetInt32().ShouldBe(1);
         }
 
-        using var searchResponse = await Client.GetAsync("/api/v1/books?search=earthsea");
+        // Search is case-insensitive: the titles above are capitalised, the query is not.
+        using var searchResponse = await Client.GetAsync($"/api/v1/books?search=paging%20{marker}");
         searchResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         var searchPage = await ReadJsonAsync(searchResponse);
-        searchPage.GetProperty("totalItems").GetInt32().ShouldBe(1);
-        searchPage.GetProperty("items")[0].GetProperty("title").GetString().ShouldBe("A Wizard of Earthsea");
+        searchPage.GetProperty("totalItems").GetInt32().ShouldBe(3);
     }
 
     [Fact]
