@@ -8,6 +8,7 @@ import { Field } from '@/shared/components/Field'
 import { useSession } from './session-context'
 import { Button } from '@/shared/components/Button'
 import { TextInput } from '@/shared/components/FormControls'
+import { Alert } from '@/shared/components/Feedback'
 
 // Mirrors the API's own rules so an obviously empty form never costs a round trip.
 // The server still validates independently — this is usability, not a boundary.
@@ -75,9 +76,9 @@ export function LoginDialog({ onClose }: { onClose: () => void }) {
         </Field>
 
         {submitError && (
-          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <Alert>
             {submitError}
-          </p>
+          </Alert>
         )}
 
         <div className="flex justify-end gap-2 pt-1">

@@ -9,6 +9,7 @@ import { Dialog } from '@/shared/components/Dialog'
 import { Field } from '@/shared/components/Field'
 import { Button } from '@/shared/components/Button'
 import { TextInput } from '@/shared/components/FormControls'
+import { Alert } from '@/shared/components/Feedback'
 
 function toDateInputValue(date: Date): string {
   const year = date.getFullYear()
@@ -142,9 +143,9 @@ export function AuthorFormDialog({ author, onClose, onSubmit }: AuthorFormDialog
         </Field>
 
         {submitError && (
-          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <Alert>
             {submitError}
-          </p>
+          </Alert>
         )}
 
         <div className="flex justify-end gap-2 pt-1">

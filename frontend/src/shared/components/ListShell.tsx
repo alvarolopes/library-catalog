@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { ApiError } from '@/shared/api/client'
 import { Button } from '@/shared/components/Button'
 import { TextInput } from '@/shared/components/FormControls'
+import { StatusMessage } from '@/shared/components/Feedback'
 
 interface ListShellProps {
   title: string
@@ -63,35 +64,21 @@ export function ListShell({
         className="mb-4 max-w-sm"
       />
 
-      {isLoading && <Message>Loading...</Message>}
+      {isLoading && <StatusMessage>Loading...</StatusMessage>}
 
       {error != null && (
-        <Message tone="error">
+        <StatusMessage tone="error">
           {error instanceof ApiError ? error.message : 'Something went wrong loading this list.'}
-        </Message>
+        </StatusMessage>
       )}
 
-      {!isLoading && error == null && isEmpty && <Message>{emptyMessage}</Message>}
+      {!isLoading && error == null && isEmpty && <StatusMessage>{emptyMessage}</StatusMessage>}
 
       {!isLoading && error == null && !isEmpty && children}
     </section>
   )
 }
 
-function Message({ children, tone = 'muted' }: { children: ReactNode; tone?: 'muted' | 'error' }) {
-  return (
-    <p
-      role={tone === 'error' ? 'alert' : undefined}
-      className={`rounded-md border px-4 py-8 text-center text-sm ${
-        tone === 'error'
-          ? 'border-red-200 bg-red-50 text-red-700'
-          : 'border-slate-200 bg-white text-slate-500'
-      }`}
-    >
-      {children}
-    </p>
-  )
-}
 
 interface PaginationProps {
   page: number

@@ -9,6 +9,7 @@ import { Dialog } from '@/shared/components/Dialog'
 import { Field } from '@/shared/components/Field'
 import { Button } from '@/shared/components/Button'
 import { TextInput, TextArea } from '@/shared/components/FormControls'
+import { Alert } from '@/shared/components/Feedback'
 
 const genreSchema = z.object({
   name: z.string().trim().min(2, 'Name must be between 2 and 100 characters.').max(100),
@@ -95,9 +96,9 @@ export function GenreFormDialog({ genre, onClose, onSubmit }: GenreFormDialogPro
         </Field>
 
         {submitError && (
-          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <Alert>
             {submitError}
-          </p>
+          </Alert>
         )}
 
         <div className="flex justify-end gap-2 pt-1">
