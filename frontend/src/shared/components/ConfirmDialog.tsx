@@ -1,5 +1,6 @@
 import { Dialog } from './Dialog'
 import { Button } from '@/shared/components/Button'
+import { Alert } from '@/shared/components/Feedback'
 
 interface ConfirmDialogProps {
   title: string
@@ -29,9 +30,9 @@ export function ConfirmDialog({
       isBusy={isSubmitting}
     >
       {error && (
-        <p role="alert" className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+        <Alert className="mb-4">
           {error}
-        </p>
+        </Alert>
       )}
 
       <div className="flex justify-end gap-2">

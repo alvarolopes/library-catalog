@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '@/shared/api/client'
+import { StatusMessage } from '@/shared/components/Feedback'
 
 interface DetailShellProps {
   title: string
@@ -30,18 +31,18 @@ export function DetailShell({ title, backTo, isLoading, error, children }: Detai
         &larr; {backTo.label}
       </Link>
 
-      {isLoading && <Message>Loading...</Message>}
+      {isLoading && <StatusMessage>Loading...</StatusMessage>}
 
       {!isLoading && isMissing && (
-        <Message tone="error">
+        <StatusMessage tone="error">
           This record no longer exists — it may have been deleted.
-        </Message>
+        </StatusMessage>
       )}
 
       {!isLoading && error != null && !isMissing && (
-        <Message tone="error">
+        <StatusMessage tone="error">
           {error instanceof ApiError ? error.message : 'Something went wrong loading this record.'}
-        </Message>
+        </StatusMessage>
       )}
 
       {!isLoading && error == null && (
@@ -54,20 +55,6 @@ export function DetailShell({ title, backTo, isLoading, error, children }: Detai
   )
 }
 
-function Message({ children, tone = 'muted' }: { children: ReactNode; tone?: 'muted' | 'error' }) {
-  return (
-    <p
-      role={tone === 'error' ? 'alert' : undefined}
-      className={`rounded-md border px-4 py-8 text-center text-sm ${
-        tone === 'error'
-          ? 'border-red-200 bg-red-50 text-red-700'
-          : 'border-slate-200 bg-white text-slate-500'
-      }`}
-    >
-      {children}
-    </p>
-  )
-}
 
 /** Field/value pairs for the record's own attributes. */
 export function DetailFields({ children }: { children: ReactNode }) {

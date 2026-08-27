@@ -11,6 +11,7 @@ import { Dialog } from '@/shared/components/Dialog'
 import { Field } from '@/shared/components/Field'
 import { Button } from '@/shared/components/Button'
 import { TextInput, Select } from '@/shared/components/FormControls'
+import { Alert } from '@/shared/components/Feedback'
 
 const REFERENCE_LIST_PARAMS = { page: 1, pageSize: 100, sortBy: 'name' } as const
 
@@ -270,15 +271,15 @@ export function BookFormDialog({ book, onClose, onSubmit }: BookFormDialogProps)
         </Field>
 
         {hasReferenceLoadError && (
-          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <Alert>
             Could not load the author and genre choices. Please close and try again.
-          </p>
+          </Alert>
         )}
 
         {submitError && (
-          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <Alert>
             {submitError}
-          </p>
+          </Alert>
         )}
 
         <div className="flex justify-end gap-2 pt-1">
