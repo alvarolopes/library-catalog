@@ -9,7 +9,7 @@ import { Dialog } from '@/shared/components/Dialog'
 import { Field } from '@/shared/components/Field'
 import { Button } from '@/shared/components/Button'
 import { TextInput } from '@/shared/components/FormControls'
-import { Alert } from '@/shared/components/Feedback'
+import { Alert } from '@/shared/components/Alert'
 
 function toDateInputValue(date: Date): string {
   const year = date.getFullYear()

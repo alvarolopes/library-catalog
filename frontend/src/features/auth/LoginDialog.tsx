@@ -8,7 +8,7 @@ import { Field } from '@/shared/components/Field'
 import { useSession } from './session-context'
 import { Button } from '@/shared/components/Button'
 import { TextInput } from '@/shared/components/FormControls'
-import { Alert } from '@/shared/components/Feedback'
+import { Alert } from '@/shared/components/Alert'
 
 // Mirrors the API's own rules so an obviously empty form never costs a round trip.
 // The server still validates independently — this is usability, not a boundary.

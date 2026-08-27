@@ -9,7 +9,7 @@ import { Dialog } from '@/shared/components/Dialog'
 import { Field } from '@/shared/components/Field'
 import { Button } from '@/shared/components/Button'
 import { TextInput, TextArea } from '@/shared/components/FormControls'
-import { Alert } from '@/shared/components/Feedback'
+import { Alert } from '@/shared/components/Alert'
 
 const genreSchema = z.object({
   name: z.string().trim().min(2, 'Name must be between 2 and 100 characters.').max(100),

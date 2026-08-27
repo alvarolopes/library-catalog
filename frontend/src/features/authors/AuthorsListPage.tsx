@@ -1,15 +1,17 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { ApiError } from '@/shared/api/client'
 import { authorsApi } from '@/shared/api/resources'
 import type { Author } from '@/shared/api/types'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
-import { ListShell, Pagination, Table } from '@/shared/components/ListShell'
+import { ListShell } from '@/shared/components/ListShell'
+import { Pagination } from '@/shared/components/Pagination'
+import { Table } from '@/shared/components/Table'
 import { useListQuery } from '@/shared/hooks/useListQuery'
 import { useSession } from '../auth/session-context'
 import { AuthorFormDialog } from './AuthorFormDialog'
 import { Button } from '@/shared/components/Button'
+import { TextLink } from '@/shared/components/TextLink'
 
 type AuthorFormMode = { type: 'create' } | { type: 'edit'; author: Author }
 
@@ -77,9 +79,9 @@ export function AuthorsListPage() {
           {result?.items.map((author) => (
             <tr key={author.id} className="hover:bg-slate-50">
               <td className="px-4 py-3 font-medium">
-                <Link to={`/authors/${author.id}`} className="text-slate-900 hover:underline">
+                <TextLink to={`/authors/${author.id}`} className="text-slate-900 hover:underline">
                   {author.name}
-                </Link>
+                </TextLink>
               </td>
               <td className="px-4 py-3 text-slate-600">{author.birthDate ?? '-'}</td>
               <td className="px-4 py-3 text-slate-600">{author.nationality ?? '-'}</td>

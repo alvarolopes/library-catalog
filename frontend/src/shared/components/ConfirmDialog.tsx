@@ -1,6 +1,6 @@
 import { Dialog } from './Dialog'
 import { Button } from '@/shared/components/Button'
-import { Alert } from '@/shared/components/Feedback'
+import { Alert } from '@/shared/components/Alert'
 
 interface ConfirmDialogProps {
   title: string
