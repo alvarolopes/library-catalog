@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { booksApi } from '@/shared/api/resources'
 import { DetailField, DetailFields, DetailShell } from '@/shared/components/DetailShell'
+import { TextLink } from '@/shared/components/TextLink'
 
 export function BookDetailPage() {
   const { id = '' } = useParams()
@@ -24,14 +25,14 @@ export function BookDetailPage() {
       {book && (
         <DetailFields>
           <DetailField label="Author">
-            <Link to={`/authors/${book.author.id}`} className="font-medium hover:underline">
+            <TextLink to={`/authors/${book.author.id}`} className="font-medium hover:underline">
               {book.author.name}
-            </Link>
+            </TextLink>
           </DetailField>
           <DetailField label="Genre">
-            <Link to={`/genres/${book.genre.id}`} className="font-medium hover:underline">
+            <TextLink to={`/genres/${book.genre.id}`} className="font-medium hover:underline">
               {book.genre.name}
-            </Link>
+            </TextLink>
           </DetailField>
           <DetailField label="Publication year">{book.publicationYear ?? '—'}</DetailField>
           <DetailField label="ISBN">

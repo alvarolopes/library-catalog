@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
 import { ApiError } from '@/shared/api/client'
-import { Button } from '@/shared/components/Button'
 import { TextInput } from '@/shared/components/FormControls'
-import { StatusMessage } from '@/shared/components/Feedback'
+import { StatusMessage } from '@/shared/components/StatusMessage'
 
 interface ListShellProps {
   title: string
@@ -76,71 +75,5 @@ export function ListShell({
 
       {!isLoading && error == null && !isEmpty && children}
     </section>
-  )
-}
-
-
-interface PaginationProps {
-  page: number
-  totalPages: number
-  totalItems: number
-  onPageChange: (page: number) => void
-}
-
-export function Pagination({ page, totalPages, totalItems, onPageChange }: PaginationProps) {
-  return (
-    <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
-      <span>
-        Page {page} of {Math.max(totalPages, 1)} — {totalItems} total
-      </span>
-      <div className="flex gap-2">
-        <PageButton disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-          Previous
-        </PageButton>
-        <PageButton disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
-          Next
-        </PageButton>
-      </div>
-    </div>
-  )
-}
-
-function PageButton({
-  children,
-  disabled,
-  onClick,
-}: {
-  children: ReactNode
-  disabled: boolean
-  onClick: () => void
-}) {
-  return (
-    <Button
-      disabled={disabled}
-      onClick={onClick}
-      tone="outline"
-      size="sm"
-    >
-      {children}
-    </Button>
-  )
-}
-
-export function Table({ headers, children }: { headers: string[]; children: ReactNode }) {
-  return (
-    <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-          <tr>
-            {headers.map((header) => (
-              <th key={header} scope="col" className="px-4 py-3 font-medium">
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">{children}</tbody>
-      </table>
-    </div>
   )
 }

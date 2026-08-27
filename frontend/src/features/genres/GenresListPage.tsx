@@ -1,15 +1,17 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { ApiError } from '@/shared/api/client'
 import { genresApi } from '@/shared/api/resources'
 import type { Genre } from '@/shared/api/types'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
-import { ListShell, Pagination, Table } from '@/shared/components/ListShell'
+import { ListShell } from '@/shared/components/ListShell'
+import { Pagination } from '@/shared/components/Pagination'
+import { Table } from '@/shared/components/Table'
 import { useListQuery } from '@/shared/hooks/useListQuery'
 import { useSession } from '../auth/session-context'
 import { GenreFormDialog } from './GenreFormDialog'
 import { Button } from '@/shared/components/Button'
+import { TextLink } from '@/shared/components/TextLink'
 
 type GenreFormMode = { type: 'create' } | { type: 'edit'; genre: Genre }
 
@@ -77,9 +79,9 @@ export function GenresListPage() {
           {result?.items.map((genre) => (
             <tr key={genre.id} className="hover:bg-slate-50">
               <td className="px-4 py-3 font-medium">
-                <Link to={`/genres/${genre.id}`} className="text-slate-900 hover:underline">
+                <TextLink to={`/genres/${genre.id}`} className="text-slate-900 hover:underline">
                   {genre.name}
-                </Link>
+                </TextLink>
               </td>
               <td className="px-4 py-3 text-slate-600">{genre.description ?? '-'}</td>
               {isSignedIn && (

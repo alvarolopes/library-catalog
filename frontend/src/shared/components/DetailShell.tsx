@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 import { ApiError } from '@/shared/api/client'
-import { StatusMessage } from '@/shared/components/Feedback'
+import { StatusMessage } from '@/shared/components/StatusMessage'
+import { TextLink } from '@/shared/components/TextLink'
 
 interface DetailShellProps {
   title: string
@@ -24,12 +24,12 @@ export function DetailShell({ title, backTo, isLoading, error, children }: Detai
 
   return (
     <section>
-      <Link
+      <TextLink
         to={backTo.to}
         className="mb-4 inline-block text-sm font-medium text-slate-500 transition hover:text-slate-900"
       >
         &larr; {backTo.label}
-      </Link>
+      </TextLink>
 
       {isLoading && <StatusMessage>Loading...</StatusMessage>}
 

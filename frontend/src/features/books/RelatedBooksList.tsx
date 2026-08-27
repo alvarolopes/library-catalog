@@ -1,8 +1,10 @@
-import { Link } from 'react-router-dom'
 import { booksApi } from '@/shared/api/resources'
 import type { Book, ListParams } from '@/shared/api/types'
-import { ListShell, Pagination, Table } from '@/shared/components/ListShell'
+import { ListShell } from '@/shared/components/ListShell'
+import { Pagination } from '@/shared/components/Pagination'
+import { Table } from '@/shared/components/Table'
 import { useListQuery } from '@/shared/hooks/useListQuery'
+import { TextLink } from '@/shared/components/TextLink'
 
 interface RelatedBooksListProps {
   title: string
@@ -56,19 +58,19 @@ export function RelatedBooksList({
         {result?.items.map((book) => (
           <tr key={book.id} className="hover:bg-slate-50">
             <td className="px-4 py-3 font-medium">
-              <Link to={`/books/${book.id}`} className="text-slate-900 hover:underline">
+              <TextLink to={`/books/${book.id}`} className="text-slate-900 hover:underline">
                 {book.title}
-              </Link>
+              </TextLink>
             </td>
             <td className="px-4 py-3 text-slate-600">
               {omitColumn === 'author' ? (
-                <Link to={`/genres/${book.genre.id}`} className="hover:underline">
+                <TextLink to={`/genres/${book.genre.id}`} className="hover:underline">
                   {book.genre.name}
-                </Link>
+                </TextLink>
               ) : (
-                <Link to={`/authors/${book.author.id}`} className="hover:underline">
+                <TextLink to={`/authors/${book.author.id}`} className="hover:underline">
                   {book.author.name}
-                </Link>
+                </TextLink>
               )}
             </td>
             <td className="px-4 py-3 text-slate-600">{book.publicationYear ?? '—'}</td>

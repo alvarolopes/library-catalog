@@ -11,7 +11,7 @@ import { Dialog } from '@/shared/components/Dialog'
 import { Field } from '@/shared/components/Field'
 import { Button } from '@/shared/components/Button'
 import { TextInput, Select } from '@/shared/components/FormControls'
-import { Alert } from '@/shared/components/Feedback'
+import { Alert } from '@/shared/components/Alert'
 
 const REFERENCE_LIST_PARAMS = { page: 1, pageSize: 100, sortBy: 'name' } as const
 

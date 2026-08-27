@@ -1,16 +1,18 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { ApiError } from '@/shared/api/client'
 import { booksApi } from '@/shared/api/resources'
 import type { BookPayload } from '@/shared/api/resources'
 import type { Book } from '@/shared/api/types'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
-import { ListShell, Pagination, Table } from '@/shared/components/ListShell'
+import { ListShell } from '@/shared/components/ListShell'
+import { Pagination } from '@/shared/components/Pagination'
+import { Table } from '@/shared/components/Table'
 import { useListQuery } from '@/shared/hooks/useListQuery'
 import { useSession } from '../auth/session-context'
 import { BookFormDialog } from './BookFormDialog'
 import { Button } from '@/shared/components/Button'
+import { TextLink } from '@/shared/components/TextLink'
 
 type BookFormMode = { type: 'create' } | { type: 'edit'; book: Book }
 
@@ -78,19 +80,19 @@ export function BooksListPage() {
           {result?.items.map((book) => (
             <tr key={book.id} className="hover:bg-slate-50">
               <td className="px-4 py-3 font-medium">
-                <Link to={`/books/${book.id}`} className="text-slate-900 hover:underline">
+                <TextLink to={`/books/${book.id}`} className="text-slate-900 hover:underline">
                   {book.title}
-                </Link>
+                </TextLink>
               </td>
               <td className="px-4 py-3 text-slate-600">
-                <Link to={`/authors/${book.author.id}`} className="hover:underline">
+                <TextLink to={`/authors/${book.author.id}`} className="hover:underline">
                   {book.author.name}
-                </Link>
+                </TextLink>
               </td>
               <td className="px-4 py-3 text-slate-600">
-                <Link to={`/genres/${book.genre.id}`} className="hover:underline">
+                <TextLink to={`/genres/${book.genre.id}`} className="hover:underline">
                   {book.genre.name}
-                </Link>
+                </TextLink>
               </td>
               <td className="px-4 py-3 text-slate-600">{book.publicationYear ?? '—'}</td>
               <td className="px-4 py-3 font-mono text-xs text-slate-500">{book.isbn ?? '—'}</td>
