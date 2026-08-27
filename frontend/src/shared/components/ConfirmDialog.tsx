@@ -1,4 +1,5 @@
 import { Dialog } from './Dialog'
+import { Button } from '@/shared/components/Button'
 
 interface ConfirmDialogProps {
   title: string
@@ -34,21 +35,19 @@ export function ConfirmDialog({
       )}
 
       <div className="flex justify-end gap-2">
-        <button
-          type="button"
+        <Button
           onClick={onCancel}
-          className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            tone="ghost"
         >
           Cancel
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
           disabled={isSubmitting}
           onClick={onConfirm}
-          className="rounded-md bg-red-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-50"
+          tone="danger"
         >
           {isSubmitting ? 'Deleting...' : confirmLabel}
-        </button>
+        </Button>
       </div>
     </Dialog>
   )

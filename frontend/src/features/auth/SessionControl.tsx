@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { LoginDialog } from './LoginDialog'
 import { useSession } from './session-context'
+import { Button } from '@/shared/components/Button'
 
 /** The header's sign in / sign out control, plus the login dialog it opens. */
 export function SessionControl() {
@@ -16,26 +17,25 @@ export function SessionControl() {
             {session.role}
           </span>
         </span>
-        <button
-          type="button"
+        <Button
           onClick={signOut}
-          className="rounded-md border border-slate-300 px-3 py-1.5 font-medium transition hover:bg-slate-100"
+          tone="outline"
+          size="sm"
         >
           Sign out
-        </button>
+        </Button>
       </div>
     )
   }
 
   return (
     <>
-      <button
-        type="button"
+      <Button
         onClick={() => setDialogOpen(true)}
-        className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slate-700"
+            size="sm"
       >
         Sign in
-      </button>
+      </Button>
       {isDialogOpen && <LoginDialog onClose={() => setDialogOpen(false)} />}
     </>
   )
