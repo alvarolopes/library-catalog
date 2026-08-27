@@ -9,6 +9,7 @@ import { ListShell, Pagination, Table } from '@/shared/components/ListShell'
 import { useListQuery } from '@/shared/hooks/useListQuery'
 import { useSession } from '../auth/session-context'
 import { AuthorFormDialog } from './AuthorFormDialog'
+import { Button } from '@/shared/components/Button'
 
 type AuthorFormMode = { type: 'create' } | { type: 'edit'; author: Author }
 
@@ -64,13 +65,11 @@ export function AuthorsListPage() {
         isEmpty={result?.items.length === 0}
         actions={
           isSignedIn ? (
-            <button
-              type="button"
+            <Button
               onClick={() => setFormMode({ type: 'create' })}
-              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
             >
               New author
-            </button>
+            </Button>
           ) : undefined
         }
       >
@@ -86,23 +85,24 @@ export function AuthorsListPage() {
               <td className="px-4 py-3 text-slate-600">{author.nationality ?? '-'}</td>
               {isSignedIn && (
                 <td className="whitespace-nowrap px-4 py-3 text-right">
-                  <button
-                    type="button"
+                  <Button
                     onClick={() => setFormMode({ type: 'edit', author })}
-                    className="rounded-md px-2.5 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    tone="ghost"
+                    size="sm"
                   >
                     Edit
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
                     onClick={() => {
                       setDeleteError(null)
                       setAuthorToDelete(author)
                     }}
-                    className="ml-1 rounded-md px-2.5 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50"
+                    tone="dangerGhost"
+                    size="sm"
+                    className="ml-1"
                   >
                     Delete
-                  </button>
+                  </Button>
                 </td>
               )}
             </tr>

@@ -9,6 +9,8 @@ import { authorsApi, genresApi } from '@/shared/api/resources'
 import type { Book } from '@/shared/api/types'
 import { Dialog } from '@/shared/components/Dialog'
 import { Field } from '@/shared/components/Field'
+import { Button } from '@/shared/components/Button'
+import { TextInput, Select } from '@/shared/components/FormControls'
 
 const REFERENCE_LIST_PARAMS = { page: 1, pageSize: 100, sortBy: 'name' } as const
 
@@ -214,39 +216,35 @@ export function BookFormDialog({ book, onClose, onSubmit }: BookFormDialogProps)
     >
       <form onSubmit={handleSubmit(submit)} noValidate className="space-y-4">
         <Field label="Title" error={errors.title?.message}>
-          <input
+          <TextInput
             type="text"
             autoFocus
             {...register('title')}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>
 
         <Field label="ISBN" error={errors.isbn?.message}>
-          <input
+          <TextInput
             type="text"
             inputMode="text"
             {...register('isbn')}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>
 
         <Field label="Publication year" error={errors.publicationYear?.message}>
-          <input
+          <TextInput
             type="number"
             min="1450"
             max={latestPublicationYear}
             step="1"
             {...register('publicationYear')}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>
 
         <Field label="Author" error={errors.authorId?.message}>
-          <select
+          <Select
             {...register('authorId')}
             disabled={isLoadingReferences || hasReferenceLoadError}
-            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="">{isLoadingReferences ? 'Loading authors...' : 'Select an author'}</option>
             {authorOptions.map((author) => (
@@ -254,14 +252,13 @@ export function BookFormDialog({ book, onClose, onSubmit }: BookFormDialogProps)
                 {author.name}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
 
         <Field label="Genre" error={errors.genreId?.message}>
-          <select
+          <Select
             {...register('genreId')}
             disabled={isLoadingReferences || hasReferenceLoadError}
-            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="">{isLoadingReferences ? 'Loading genres...' : 'Select a genre'}</option>
             {genreOptions.map((genre) => (
@@ -269,7 +266,7 @@ export function BookFormDialog({ book, onClose, onSubmit }: BookFormDialogProps)
                 {genre.name}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
 
         {hasReferenceLoadError && (
@@ -285,20 +282,18 @@ export function BookFormDialog({ book, onClose, onSubmit }: BookFormDialogProps)
         )}
 
         <div className="flex justify-end gap-2 pt-1">
-          <button
-            type="button"
+          <Button
             onClick={onClose}
-            className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            tone="ghost"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             disabled={isSubmitting || isLoadingReferences || hasReferenceLoadError}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
           >
             {isSubmitting ? 'Saving...' : 'Save book'}
-          </button>
+          </Button>
         </div>
       </form>
     </Dialog>

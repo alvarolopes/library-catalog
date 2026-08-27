@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import { ApiError } from '@/shared/api/client'
+import { Button } from '@/shared/components/Button'
+import { TextInput } from '@/shared/components/FormControls'
 
 interface ListShellProps {
   title: string
@@ -52,13 +54,13 @@ export function ListShell({
         {actions}
       </div>
 
-      <input
+      <TextInput
         type="search"
         value={search}
         onChange={(event) => onSearchChange(event.target.value)}
         placeholder={`Search ${title.toLowerCase()}...`}
         aria-label={`Search ${title.toLowerCase()}`}
-        className="mb-4 w-full max-w-sm rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900"
+        className="mb-4 max-w-sm"
       />
 
       {isLoading && <Message>Loading...</Message>}
@@ -126,14 +128,14 @@ function PageButton({
   onClick: () => void
 }) {
   return (
-    <button
-      type="button"
+    <Button
       disabled={disabled}
       onClick={onClick}
-      className="rounded-md border border-slate-300 bg-white px-3 py-1.5 font-medium transition disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:bg-slate-100"
+      tone="outline"
+      size="sm"
     >
       {children}
-    </button>
+    </Button>
   )
 }
 
